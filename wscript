@@ -42,3 +42,8 @@ def build(bld):
               source='src/my_mcts.cpp',
               includes = './include',
               target='my_mcts')
+
+    bld.program(features = 'cxx',
+              source='src/mcts_state.cpp',
+              includes = './include',
+              target='mcts_state')

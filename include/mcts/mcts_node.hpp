@@ -16,35 +16,36 @@ namespace mcts {
     // usage :
     // rgen_double_t(0.0, 1.0);
     // double r = rgen.rand();
-    template <typename D>
-    class RandomGenerator {
-    public:
-        using result_type = typename D::result_type;
-        RandomGenerator(result_type min, result_type max) : _dist(min, max), _rgen(std::random_device()()) {}
-        result_type rand()
-        {
-            std::lock_guard<std::mutex> lock(_mutex);
-            return _dist(_rgen);
-        }
-
-    private:
-        D _dist;
-        std::mt19937 _rgen;
-        std::mutex _mutex;
-    };
-    using rdist_double_t = std::uniform_real_distribution<double>;
-    using rdist_int_t = std::uniform_int_distribution<int>;
-
-    using rgen_double_t = RandomGenerator<rdist_double_t>;
-    using rgen_int_t = RandomGenerator<rdist_int_t>;
+    // template <typename D>
+    // class RandomGenerator {
+    // public:
+    //     using result_type = typename D::result_type;
+    //     RandomGenerator(result_type min, result_type max) : _dist(min, max), _rgen(std::random_device()()) {}
+    //     result_type rand()
+    //     {
+    //         std::lock_guard<std::mutex> lock(_mutex);
+    //         return _dist(_rgen);
+    //     }
+    //
+    // private:
+    //     D _dist;
+    //     std::mt19937 _rgen;
+    //     std::mutex _mutex;
+    // };
+    // using rdist_double_t = std::uniform_real_distribution<double>;
+    // using rdist_int_t = std::uniform_int_distribution<int>;
+    //
+    // using rgen_double_t = RandomGenerator<rdist_double_t>;
+    // using rgen_int_t = RandomGenerator<rdist_int_t>;
 
     struct UCTValue {
-        const double _c = 1.0;
+        const double _c = 1.0 / std::sqrt(2.0);
 
         template <typename Node>
         double operator()(const std::shared_ptr<Node>& node)
         {
-            return node->value() / (double(node->visits()) + node->parent()->epsilon()) + _c * std::sqrt(std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->parent()->epsilon()));
+            // return node->value() / (double(node->visits()) + node->parent()->epsilon()) + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->parent()->epsilon()));
+            return node->value() + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->parent()->epsilon()));
         }
     };
 
@@ -52,8 +53,9 @@ namespace mcts {
         template <typename State>
         size_t operator()(const State& state, size_t actions_size)
         {
-            rgen_double_t random(0, 1);
-            return static_cast<size_t>(random.rand() * actions_size);
+            // rgen_double_t random(0, 1);
+            // return static_cast<size_t>(random.rand() * actions_size);
+            return static_cast<size_t>(std::rand() * actions_size / RAND_MAX);
         }
     };
 
@@ -80,7 +82,7 @@ namespace mcts {
         using node_ptr = std::shared_ptr<node_type>;
 
         MCTSNode(size_t n_actions, State state = State(), size_t rollout_depth = 5, double gamma = 0.9)
-            : _parent(nullptr), _state(state), _leaf(true), _visits(0), _n_actions(n_actions), _rollout_depth(rollout_depth), _value(0), _gamma(gamma)
+            : _parent(nullptr), _state(state), _leaf(true), _visits(0), _n_actions(n_actions), _rollout_depth(rollout_depth), _value(0.0), _gamma(gamma)
         {
             //helper this shared_ptr, we do not want it to be deleted by the shared_ptr
             _this = node_ptr(this, [](node_type* p) {});
@@ -124,7 +126,7 @@ namespace mcts {
             visited.push(cur_node);
             rewards.push(cur_reward);
 
-            double value = rollout(mdp);
+            double value = rollout(cur_node, mdp);
 
             while (!visited.empty()) {
                 assert(visited.size() == rewards.size());
@@ -139,8 +141,9 @@ namespace mcts {
         size_t best_action()
         {
             if (_leaf) {
-                rgen_double_t random(0, 1);
-                return static_cast<size_t>(random.rand() * _children.size());
+                // rgen_double_t random(0, 1);
+                // return static_cast<size_t>(random.rand() * _children.size());
+                return static_cast<size_t>(std::rand() * _children.size() / RAND_MAX);
             }
 
             size_t selected = 0;
@@ -157,7 +160,7 @@ namespace mcts {
                 // rgen_double_t random(0, 1);
                 // exp_value += random.rand() * _epsilon;
 
-                if (exp_value >= best) {
+                if (exp_value > best) {
                     selected = k;
                     best = exp_value;
                 }
@@ -235,7 +238,7 @@ namespace mcts {
                 // rgen_double_t random(0, 1);
                 // value += random.rand() * _epsilon;
 
-                if (value >= best) {
+                if (value > best) {
                     selected = k;
                     best = value;
                 }
@@ -259,12 +262,12 @@ namespace mcts {
         }
 
         template <typename ValueSimulator>
-        double rollout(ValueSimulator mdp)
+        double rollout(const node_ptr& cur_node, ValueSimulator mdp)
         {
             double discount = 1.0;
             double reward = 0.0;
 
-            State cur_state = _state;
+            State cur_state = cur_node->_state;
 
             for (size_t k = 0; k < _rollout_depth; ++k) {
                 // Choose action according to policy

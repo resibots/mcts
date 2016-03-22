@@ -1,7 +1,3 @@
-/**
- * @file mdpHarness.cpp
- * Test harness for MCTS applied to simple MDP
- */
 #include <ctime>
 #include <exception>
 #include <iostream>
