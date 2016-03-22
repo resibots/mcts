@@ -156,10 +156,8 @@ namespace mcts {
 
                 double exp_value = cur_node->_value / (double(cur_node->_visits) + _epsilon);
 
-                // TO-DO: Add small random value to break ties
-                // Too slow?
-                // rgen_double_t random(0, 1);
-                // exp_value += random.rand() * _epsilon;
+                // Add small random value to break ties
+                exp_value += std::rand() * _epsilon / RAND_MAX;
 
                 if (exp_value > best) {
                     selected = k;
@@ -233,10 +231,8 @@ namespace mcts {
 
                 double value = ValueFunc()(_children[k]);
 
-                // TO-DO: Add small random value to break ties
-                // Too slow?
-                // rgen_double_t random(0, 1);
-                // value += random.rand() * _epsilon;
+                // Add small random value to break ties
+                value += std::rand() * _epsilon / RAND_MAX;
 
                 if (value > best) {
                     selected = k;
