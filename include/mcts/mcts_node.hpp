@@ -66,7 +66,14 @@ namespace mcts {
         }
     };
 
-    template <typename State, typename ValueFunc, typename DefaultPolicy>
+    struct PassThrough {
+        size_t operator()(size_t action, size_t actions_size)
+        {
+            return action;
+        }
+    };
+
+    template <typename State, typename ValueFunc, typename DefaultPolicy, typename ChooseActions = PassThrough>
     class MCTSNode {
     public:
         using node_type = MCTSNode<State, ValueFunc, DefaultPolicy>;
@@ -245,7 +252,8 @@ namespace mcts {
 
             _leaf = false;
             for (size_t k = 0; k < _n_actions; ++k) {
-                _children.push_back(std::make_shared<node_type>(_n_actions, _state.move_with(k), _rollout_depth, _gamma));
+                size_t action = ChooseActions()(k, _n_actions);
+                _children.push_back(std::make_shared<node_type>(_n_actions, _state.move_with(action), _rollout_depth, _gamma));
                 _children[k]->_parent = _this;
             }
         }
