@@ -66,6 +66,11 @@ namespace mcts {
         {
             return EmptyState();
         }
+
+        bool operator==(const EmptyState& other)
+        {
+            return false;
+        }
     };
 
     struct PassThrough {
@@ -76,17 +81,13 @@ namespace mcts {
     };
 
     template <typename State, typename ValueFunc, typename DefaultPolicy, typename ChooseActions = PassThrough>
-    class MCTSNode {
+    class MCTSNode : public std::enable_shared_from_this<MCTSNode<State, ValueFunc, DefaultPolicy, ChooseActions>> {
     public:
         using node_type = MCTSNode<State, ValueFunc, DefaultPolicy>;
         using node_ptr = std::shared_ptr<node_type>;
 
         MCTSNode(size_t n_actions, State state = State(), size_t rollout_depth = 5, double gamma = 0.9)
-            : _parent(nullptr), _state(state), _leaf(true), _visits(0), _n_actions(n_actions), _rollout_depth(rollout_depth), _value(0.0), _gamma(gamma)
-        {
-            //helper this shared_ptr, we do not want it to be deleted by the shared_ptr
-            _this = node_ptr(this, [](node_type* p) {});
-        }
+            : _parent(nullptr), _state(state), _leaf(true), _visits(0), _n_actions(n_actions), _rollout_depth(rollout_depth), _value(0.0), _gamma(gamma) {}
 
         State state() { return _state; }
         node_ptr parent() { return _parent; }
@@ -102,7 +103,7 @@ namespace mcts {
         template <typename ValueSimulator>
         void iterate(ValueSimulator mdp)
         {
-            node_ptr cur_node = _this;
+            node_ptr cur_node = this->shared_from_this();
             std::stack<node_ptr> visited;
             visited.push(cur_node);
 
@@ -149,7 +150,7 @@ namespace mcts {
             size_t selected = 0;
             double best = -std::numeric_limits<double>::max();
 
-            for (size_t k = 0; k < _n_actions; ++k) {
+            for (size_t k = 0; k < _children.size(); ++k) {
                 node_ptr cur_node = _children[k]; // ptr to current child node
                 assert(cur_node != nullptr);
 
@@ -177,7 +178,7 @@ namespace mcts {
         double q_value(size_t action) const
         {
             assert(0 <= action);
-            assert(_n_actions > action);
+            assert(_children.size() > action);
             return _children[action]->exp_value();
         }
 
@@ -188,7 +189,7 @@ namespace mcts {
             }
 
             size_t result = 1;
-            for (size_t k = 0; k < _n_actions; ++k) {
+            for (size_t k = 0; k < _children.size(); ++k) {
                 result += _children[k]->nodes();
             }
             return result;
@@ -201,7 +202,7 @@ namespace mcts {
             }
 
             size_t maxDepth = 0;
-            for (size_t k = 0; k < _n_actions; ++k) {
+            for (size_t k = 0; k < _children.size(); ++k) {
                 size_t curDepth = _children[k]->max_depth(parentDepth + 1);
                 if (maxDepth < curDepth) {
                     maxDepth = curDepth;
@@ -213,7 +214,6 @@ namespace mcts {
 
     protected:
         // members
-        node_ptr _this;
         node_ptr _parent;
         std::vector<node_ptr> _children;
         State _state;
@@ -256,9 +256,40 @@ namespace mcts {
             _leaf = false;
             for (size_t k = 0; k < _n_actions; ++k) {
                 size_t action = ChooseActions()(k, _n_actions);
-                _children.push_back(std::make_shared<node_type>(_n_actions, _state.move_with(action), _rollout_depth, _gamma));
-                _children[k]->_parent = _this;
+                State to_add = _state.move_with(action);
+                // node_ptr tmp = node_state(to_add);
+                // if (tmp != nullptr)
+                //     _children.push_back(tmp);
+                // else {
+                _children.push_back(std::make_shared<node_type>(_n_actions, to_add, _rollout_depth, _gamma));
+                _children[k]->_parent = this->shared_from_this();
+                // }
             }
+        }
+
+        node_ptr node_state(const State& state)
+        {
+            node_ptr root = this->shared_from_this();
+            while (root->_parent != nullptr) {
+                root = root->_parent;
+            }
+            if (root == nullptr)
+                return nullptr;
+            return root->find(state);
+        }
+
+        node_ptr find(const State& state)
+        {
+            if (_state == state)
+                return this->shared_from_this();
+            if (_leaf)
+                return nullptr;
+            for (size_t k = 0; k < _children.size(); k++) {
+                auto tmp = _children[k]->find(state);
+                if (tmp != nullptr)
+                    return tmp;
+            }
+            return nullptr;
         }
 
         template <typename ValueSimulator>

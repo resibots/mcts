@@ -79,6 +79,12 @@ namespace {
 
             return GridState(x_new, y_new, _N);
         }
+
+        bool operator==(const GridState& other)
+        {
+            assert(_N == other._N);
+            return (_x == other._x && _y == other._y);
+        }
     };
 }
 
@@ -94,17 +100,17 @@ int main()
     size_t n = 0;
 
     while ((init._x != (SIZE - 1)) || (init._y != (SIZE - 1))) {
-        mcts::MCTSNode<GridState, mcts::UCTValue, mcts::UniformRandomPolicy> tree(N_ACTIONS, init, 20);
+        auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::UCTValue, mcts::UniformRandomPolicy>>(N_ACTIONS, init, 20);
 
         const int N_ITERATIONS = 1000;
         for (int k = 0; k < N_ITERATIONS; ++k) {
             //  std::cout << "tree: " << tree << std::endl;
             // std::cout << "iteration: " << k << std::endl;
-            tree.iterate(world);
+            tree->iterate(world);
         }
         // std::cout << "tree: " << tree << std::endl;
 
-        bestAction = tree.best_action();
+        bestAction = tree->best_action();
 
         init = init.move_with(bestAction);
         n++;
