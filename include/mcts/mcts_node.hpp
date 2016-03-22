@@ -79,6 +79,7 @@ namespace mcts {
             _this = node_ptr(this, [](node_type* p) {});
         }
 
+        State state() { return _state; }
         node_ptr parent() { return _parent; }
         std::vector<node_ptr> children() { return _children; }
         bool leaf() { return _leaf; }
@@ -101,13 +102,11 @@ namespace mcts {
 
             size_t action = 0;
             double cur_reward = 0.0;
-            State cur_state = _state;
             while (!cur_node->leaf()) {
                 action = cur_node->select_action();
                 cur_node = cur_node->_children[action];
                 visited.push(cur_node);
-                cur_state = cur_state.move_with(action);
-                cur_reward = mdp(cur_state, action);
+                cur_reward = mdp(cur_node->_state, action);
                 rewards.push(cur_reward);
             }
 
@@ -115,8 +114,7 @@ namespace mcts {
             action = cur_node->select_action();
             cur_node = cur_node->_children[action];
             visited.push(cur_node);
-            cur_state = cur_state.move_with(action);
-            cur_reward = mdp(cur_state, action);
+            cur_reward = mdp(cur_node->_state, action);
             rewards.push(cur_reward);
 
             double value = rollout(mdp);
