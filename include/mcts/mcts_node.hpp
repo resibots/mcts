@@ -104,17 +104,17 @@ namespace mcts {
             double cur_reward = 0.0;
             while (!cur_node->leaf()) {
                 action = cur_node->select_action();
+                cur_reward = mdp(cur_node->_state, action);
                 cur_node = cur_node->_children[action];
                 visited.push(cur_node);
-                cur_reward = mdp(cur_node->_state, action);
                 rewards.push(cur_reward);
             }
 
             cur_node->expand();
             action = cur_node->select_action();
+            cur_reward = mdp(cur_node->_state, action);
             cur_node = cur_node->_children[action];
             visited.push(cur_node);
-            cur_reward = mdp(cur_node->_state, action);
             rewards.push(cur_reward);
 
             double value = rollout(mdp);
@@ -259,12 +259,14 @@ namespace mcts {
             State cur_state = _state;
 
             for (size_t k = 0; k < _rollout_depth; ++k) {
-                // Choose action acording to policy
+                // Choose action according to policy
                 size_t action = DefaultPolicy()(cur_state, _n_actions);
-                cur_state = cur_state.move_with(action);
 
                 // Get value from (PO)MDP
                 reward += discount * mdp(cur_state, action);
+
+                // Update state
+                cur_state = cur_state.move_with(action);
                 discount *= _gamma;
             }
 
