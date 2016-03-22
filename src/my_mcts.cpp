@@ -15,6 +15,12 @@ namespace {
         {
             return static_cast<double>(rand() % RAND_MAX) / RAND_MAX;
         }
+
+        template <typename State>
+        bool final(const State& state)
+        {
+            return false;
+        }
     };
 }
 

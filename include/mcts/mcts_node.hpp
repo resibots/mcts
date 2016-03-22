@@ -275,6 +275,10 @@ namespace mcts {
 
                 // Update state
                 cur_state = cur_state.move_with(action);
+
+                // Check if terminal state
+                if (mdp.final(cur_state))
+                    break;
                 discount *= _gamma;
             }
 
