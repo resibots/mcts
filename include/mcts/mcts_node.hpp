@@ -13,31 +13,6 @@
 
 namespace mcts {
 
-    // usage :
-    // rgen_double_t(0.0, 1.0);
-    // double r = rgen.rand();
-    // template <typename D>
-    // class RandomGenerator {
-    // public:
-    //     using result_type = typename D::result_type;
-    //     RandomGenerator(result_type min, result_type max) : _dist(min, max), _rgen(std::random_device()()) {}
-    //     result_type rand()
-    //     {
-    //         std::lock_guard<std::mutex> lock(_mutex);
-    //         return _dist(_rgen);
-    //     }
-    //
-    // private:
-    //     D _dist;
-    //     std::mt19937 _rgen;
-    //     std::mutex _mutex;
-    // };
-    // using rdist_double_t = std::uniform_real_distribution<double>;
-    // using rdist_int_t = std::uniform_int_distribution<int>;
-    //
-    // using rgen_double_t = RandomGenerator<rdist_double_t>;
-    // using rgen_int_t = RandomGenerator<rdist_int_t>;
-
     struct UCTValue {
         const double _c = 1.0 / std::sqrt(2.0);
 
@@ -45,7 +20,6 @@ namespace mcts {
         double operator()(const std::shared_ptr<Node>& node)
         {
             return node->value() / (double(node->visits()) + node->epsilon()) + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->epsilon()));
-            // return node->value() + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->parent()->epsilon()));
         }
     };
 
@@ -53,8 +27,6 @@ namespace mcts {
         template <typename State>
         size_t operator()(const State& state, size_t actions_size)
         {
-            // rgen_double_t random(0, 1);
-            // return static_cast<size_t>(random.rand() * actions_size);
             return static_cast<size_t>(std::rand() * actions_size / RAND_MAX);
         }
     };
@@ -144,8 +116,6 @@ namespace mcts {
         size_t best_action()
         {
             if (_leaf) {
-                // rgen_double_t random(0, 1);
-                // return static_cast<size_t>(random.rand() * _children.size());
                 return static_cast<size_t>(std::rand() * _children.size() / RAND_MAX);
             }
 
@@ -270,12 +240,9 @@ namespace mcts {
                     tmp->_visits++;
                     continue;
                 }
-                //     _children.push_back(tmp);
-                // else {
                 _children.push_back(std::make_shared<node_type>(_n_actions, to_add, _rollout_depth, _gamma));
                 _children.back()->_parent = this->shared_from_this();
                 _children.back()->_action = action;
-                // }
             }
         }
 
