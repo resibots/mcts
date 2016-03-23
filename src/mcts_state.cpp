@@ -4,7 +4,7 @@
 #include <iostream>
 #include <mcts/mcts_node.hpp>
 
-#define SIZE 5
+#define SIZE 10
 
 namespace {
 
@@ -12,15 +12,13 @@ namespace {
         template <typename State>
         double operator()(State state, size_t action)
         {
-            if (!state.in_bounds(action))
-                return -2.0;
             State tmp = state.move_with(action);
             // std::cout << tmp._x << " " << tmp._y << std::endl;
             if (tmp._x == (SIZE - 1) && tmp._y == (SIZE - 1)) {
                 // std::cout << "Goal!" << std::endl;
                 return 1.0;
             }
-            return -1.0;
+            return 0.0;
         }
 
         template <typename State>
@@ -49,7 +47,7 @@ namespace {
             _N = N;
         }
 
-        bool in_bounds(size_t action)
+        bool valid(size_t action)
         {
             int x_new = _x, y_new = _y;
             if (action == 0) // up
@@ -132,7 +130,7 @@ int main()
     size_t n = 0;
 
     while ((init._x != (SIZE - 1)) || (init._y != (SIZE - 1))) {
-        auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::UCTValue, mcts::UniformRandomPolicy>>(N_ACTIONS, init, 100);
+        auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::UCTValue, mcts::UniformRandomPolicy>>(N_ACTIONS, init, 20);
 
         const int N_ITERATIONS = 1000;
         for (int k = 0; k < N_ITERATIONS; ++k) {

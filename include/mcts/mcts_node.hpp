@@ -44,8 +44,8 @@ namespace mcts {
         template <typename Node>
         double operator()(const std::shared_ptr<Node>& node)
         {
-            // return node->value() / (double(node->visits()) + node->parent()->epsilon()) + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->parent()->epsilon()));
-            return node->value() + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->parent()->epsilon()));
+            return node->value() / (double(node->visits()) + node->epsilon()) + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->epsilon()));
+            // return node->value() + _c * std::sqrt(2.0 * std::log(node->parent()->visits() + 1.0) / (double(node->visits()) + node->parent()->epsilon()));
         }
     };
 
@@ -112,8 +112,8 @@ namespace mcts {
 
             size_t action = 0;
             double cur_reward = 0.0;
-            while (!cur_node->leaf()) {
-                action = cur_node->select_action();
+            while (!cur_node->leaf() && cur_node->_children.size() > 0) {
+                action = cur_node->select_child();
                 cur_reward = mdp(cur_node->_state, action);
                 cur_node = cur_node->_children[action];
                 visited.push(cur_node);
@@ -121,11 +121,13 @@ namespace mcts {
             }
 
             cur_node->expand();
-            action = cur_node->select_action();
-            cur_reward = mdp(cur_node->_state, action);
-            cur_node = cur_node->_children[action];
-            visited.push(cur_node);
-            rewards.push(cur_reward);
+            if (cur_node->_children.size() > 0) {
+                action = cur_node->select_child();
+                cur_reward = mdp(cur_node->_state, action);
+                cur_node = cur_node->_children[action];
+                visited.push(cur_node);
+                rewards.push(cur_reward);
+            }
 
             double value = rollout(cur_node, mdp);
 
@@ -160,7 +162,7 @@ namespace mcts {
                 exp_value += std::rand() * _epsilon / RAND_MAX;
 
                 if (exp_value > best) {
-                    selected = k;
+                    selected = cur_node->_action;
                     best = exp_value;
                 }
             }
@@ -210,16 +212,24 @@ namespace mcts {
             return maxDepth;
         }
 
+        void print(int depth = 0)
+        {
+            std::cout << depth << ": " << _state._x << " " << _state._y << " -> " << _value << " N: " << _visits << std::endl;
+            for (size_t i = 0; i < _children.size(); i++) {
+                _children[i]->print(depth + 1);
+            }
+        }
+
     protected:
         // members
         node_ptr _parent;
         std::vector<node_ptr> _children;
         State _state;
         bool _leaf;
-        size_t _visits, _n_actions, _rollout_depth;
+        size_t _visits, _n_actions, _rollout_depth, _action;
         double _value, _gamma, _epsilon;
 
-        size_t select_action()
+        size_t select_child()
         {
             assert(!_leaf);
             size_t selected = 0;
@@ -252,13 +262,19 @@ namespace mcts {
             _leaf = false;
             for (size_t k = 0; k < _n_actions; ++k) {
                 size_t action = ChooseActions()(k, _n_actions);
+                if (!_state.valid(action))
+                    continue;
                 State to_add = _state.move_with(action);
-                // node_ptr tmp = node_state(to_add);
-                // if (tmp != nullptr)
+                node_ptr tmp = node_state(to_add);
+                if (tmp != nullptr) {
+                    tmp->_visits++;
+                    continue;
+                }
                 //     _children.push_back(tmp);
                 // else {
                 _children.push_back(std::make_shared<node_type>(_n_actions, to_add, _rollout_depth, _gamma));
-                _children[k]->_parent = this->shared_from_this();
+                _children.back()->_parent = this->shared_from_this();
+                _children.back()->_action = action;
                 // }
             }
         }
@@ -299,6 +315,9 @@ namespace mcts {
             for (size_t k = 0; k < _rollout_depth; ++k) {
                 // Choose action according to policy
                 size_t action = DefaultPolicy()(cur_state, _n_actions);
+                // while (!cur_state.valid(action)) {
+                //     action = DefaultPolicy()(cur_state, _n_actions);
+                // }
 
                 // Get value from (PO)MDP
                 reward += discount * mdp(cur_state, action);
