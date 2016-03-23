@@ -13,11 +13,9 @@ namespace {
         double operator()(State state, size_t action)
         {
             State tmp = state.move_with(action);
-            // std::cout << tmp._x << " " << tmp._y << std::endl;
-            if (tmp._x == (SIZE - 1) && tmp._y == (SIZE - 1)) {
-                // std::cout << "Goal!" << std::endl;
+            if (tmp._x == (SIZE - 1) && tmp._y == (SIZE - 1))
                 return 1.0;
-            }
+
             return 0.0;
         }
 
@@ -105,8 +103,6 @@ namespace {
                     x_new++;
             }
 
-            // std::cout << _x << " " << _y << " -> " << x_new << " " << y_new << " with action " << action << std::endl;
-
             return GridState(x_new, y_new, _N);
         }
 
@@ -148,9 +144,6 @@ int main()
     std::ofstream file("results.txt");
     file << n << std::endl;
     file.close();
-    // std::cout << "Best Action: " << bestAction << std::endl;
-    // int nNodes = tree.nodes();
-    // std::cout << "Number of Nodes: " << nNodes << std::endl;
-    // int maxDepth = tree.max_depth();
-    // std::cout << "Max Depth: " << maxDepth << std::endl;
+
+    return 0;
 }
