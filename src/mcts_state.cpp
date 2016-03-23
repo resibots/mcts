@@ -134,10 +134,8 @@ int main()
 
         const int N_ITERATIONS = 1000;
         for (int k = 0; k < N_ITERATIONS; ++k) {
-            //  std::cout << "tree: " << tree << std::endl;
             tree->iterate(world);
         }
-        // std::cout << "tree: " << tree << std::endl;
 
         bestAction = tree->best_action();
 
