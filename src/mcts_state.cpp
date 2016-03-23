@@ -4,7 +4,7 @@
 #include <iostream>
 #include <mcts/mcts_node.hpp>
 
-#define SIZE 10
+#define SIZE 5
 
 namespace {
 
@@ -12,6 +12,8 @@ namespace {
         template <typename State>
         double operator()(State state, size_t action)
         {
+            if (!state.in_bounds(action))
+                return -2.0;
             State tmp = state.move_with(action);
             // std::cout << tmp._x << " " << tmp._y << std::endl;
             if (tmp._x == (SIZE - 1) && tmp._y == (SIZE - 1)) {
@@ -45,6 +47,36 @@ namespace {
             _x = x;
             _y = y;
             _N = N;
+        }
+
+        bool in_bounds(size_t action)
+        {
+            int x_new = _x, y_new = _y;
+            if (action == 0) // up
+            {
+                y_new++;
+                if (y_new >= (int)_N)
+                    return false;
+            }
+            else if (action == 1) // down
+            {
+                y_new--;
+                if (y_new < 0)
+                    return false;
+            }
+            else if (action == 2) // right
+            {
+                x_new++;
+                if (x_new >= (int)_N)
+                    return false;
+            }
+            else if (action == 3) // left
+            {
+                x_new--;
+                if (x_new < 0)
+                    return false;
+            }
+            return true;
         }
 
         GridState move_with(size_t action)
@@ -100,12 +132,11 @@ int main()
     size_t n = 0;
 
     while ((init._x != (SIZE - 1)) || (init._y != (SIZE - 1))) {
-        auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::UCTValue, mcts::UniformRandomPolicy>>(N_ACTIONS, init, 20);
+        auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::UCTValue, mcts::UniformRandomPolicy>>(N_ACTIONS, init, 100);
 
         const int N_ITERATIONS = 1000;
         for (int k = 0; k < N_ITERATIONS; ++k) {
             //  std::cout << "tree: " << tree << std::endl;
-            // std::cout << "iteration: " << k << std::endl;
             tree->iterate(world);
         }
         // std::cout << "tree: " << tree << std::endl;
@@ -116,6 +147,7 @@ int main()
         n++;
         // std::cout << init._x << " " << init._y << std::endl;
     }
+    std::cout << n << std::endl;
 
     std::ofstream file("results.txt");
     file << n << std::endl;
