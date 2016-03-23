@@ -85,29 +85,29 @@ namespace mcts {
             size_t action = 0;
             double cur_reward = 0.0;
             while (!cur_node->leaf() && cur_node->_children.size() > 0) {
-                action = cur_node->select_child();
+                action = cur_node->_select_child();
                 cur_reward = mdp(cur_node->_state, action);
                 cur_node = cur_node->_children[action];
                 visited.push(cur_node);
                 rewards.push(cur_reward);
             }
 
-            cur_node->expand();
+            cur_node->_expand();
             if (cur_node->_children.size() > 0) {
-                action = cur_node->select_child();
+                action = cur_node->_select_child();
                 cur_reward = mdp(cur_node->_state, action);
                 cur_node = cur_node->_children[action];
                 visited.push(cur_node);
                 rewards.push(cur_reward);
             }
 
-            double value = rollout(cur_node, mdp);
+            double value = _rollout(cur_node, mdp);
 
             while (!visited.empty()) {
                 assert(visited.size() == rewards.size());
                 value = rewards.top() + _gamma * value;
                 cur_node = visited.top();
-                cur_node->update_stats(value);
+                cur_node->_update_stats(value);
                 visited.pop();
                 rewards.pop();
             }
@@ -199,7 +199,7 @@ namespace mcts {
         size_t _visits, _n_actions, _rollout_depth, _action;
         double _value, _gamma, _epsilon;
 
-        size_t select_child()
+        size_t _select_child()
         {
             assert(!_leaf);
             size_t selected = 0;
@@ -223,7 +223,7 @@ namespace mcts {
             return selected;
         }
 
-        void expand()
+        void _expand()
         {
             if (!_leaf) {
                 return;
@@ -235,7 +235,7 @@ namespace mcts {
                 if (!_state.valid(action))
                     continue;
                 State to_add = _state.move_with(action);
-                node_ptr tmp = node_state(to_add);
+                node_ptr tmp = _node_state(to_add);
                 if (tmp != nullptr) {
                     tmp->_visits++;
                     continue;
@@ -246,7 +246,7 @@ namespace mcts {
             }
         }
 
-        node_ptr node_state(const State& state)
+        node_ptr _node_state(const State& state)
         {
             node_ptr root = this->shared_from_this();
             while (root->_parent != nullptr) {
@@ -254,17 +254,17 @@ namespace mcts {
             }
             if (root == nullptr)
                 return nullptr;
-            return root->find(state);
+            return root->_find(state);
         }
 
-        node_ptr find(const State& state)
+        node_ptr _find(const State& state)
         {
             if (_state == state)
                 return this->shared_from_this();
             if (_leaf)
                 return nullptr;
             for (size_t k = 0; k < _children.size(); k++) {
-                auto tmp = _children[k]->find(state);
+                auto tmp = _children[k]->_find(state);
                 if (tmp != nullptr)
                     return tmp;
             }
@@ -272,7 +272,7 @@ namespace mcts {
         }
 
         template <typename ValueSimulator>
-        double rollout(const node_ptr& cur_node, ValueSimulator mdp)
+        double _rollout(const node_ptr& cur_node, ValueSimulator mdp)
         {
             double discount = 1.0;
             double reward = 0.0;
@@ -302,7 +302,7 @@ namespace mcts {
             return reward;
         }
 
-        void update_stats(double value)
+        void _update_stats(double value)
         {
             _visits++;
             _value += value;
