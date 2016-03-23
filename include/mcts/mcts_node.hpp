@@ -315,9 +315,10 @@ namespace mcts {
             for (size_t k = 0; k < _rollout_depth; ++k) {
                 // Choose action according to policy
                 size_t action = DefaultPolicy()(cur_state, _n_actions);
-                // while (!cur_state.valid(action)) {
-                //     action = DefaultPolicy()(cur_state, _n_actions);
-                // }
+                // This assumes that all states have at least one valid action
+                while (!cur_state.valid(action)) {
+                    action = DefaultPolicy()(cur_state, _n_actions);
+                }
 
                 // Get value from (PO)MDP
                 reward += discount * mdp(cur_state, action);
