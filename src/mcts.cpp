@@ -2,9 +2,9 @@
 #include <ctime>
 #include <mcts/mcts.hpp>
 
-#define SIZE 5
+#define SIZE 7
 #define GOAL SIZE
-#define PROB 0.1
+#define PROB 0.0
 
 struct GridState {
     size_t _x, _y, _N;
@@ -55,12 +55,8 @@ struct GridState {
 
     size_t next_action()
     {
-        size_t mult = 1; //(PROB > 0.0) ? 2 : 1;
-
-        size_t i;
-        while (true) {
-            i = static_cast<size_t>(std::rand() * 4.0 / (double)RAND_MAX);
-            if (valid(i) && std::count(_used_actions.begin(), _used_actions.end(), i) < (int)mult) {
+        for (size_t i = 0; i < 4; i++) {
+            if (valid(i) && std::count(_used_actions.begin(), _used_actions.end(), i) == 0) {
                 _used_actions.push_back(i);
                 return i;
             }
@@ -82,8 +78,7 @@ struct GridState {
 
     bool has_actions()
     {
-        size_t mult = 1; //(PROB > 0.0) ? 2 : 1;
-        return _used_actions.size() < valid_actions() * mult;
+        return _used_actions.size() < valid_actions();
     }
 
     GridState move(size_t action) const
@@ -169,6 +164,8 @@ int main()
 
     GridWorld world;
 
+    size_t c = 0;
+
     for (size_t i = 0; i < SIZE; i++) {
         for (size_t j = 0; j < SIZE; j++) {
             GridState init(i, j, SIZE);
@@ -181,9 +178,13 @@ int main()
             auto best = tree->best_child();
             if (best == nullptr)
                 std::cout << init._x << " " << init._y << ": Terminal!" << std::endl;
-            else
+            else {
+                if (best->parent()->action() != 0 && best->parent()->action() != 2)
+                    c++;
                 std::cout << init._x << " " << init._y << ": " << best->parent()->action() << std::endl;
+            }
         }
     }
+    std::cout << "Errors: " << c << std::endl;
     return 0;
 }

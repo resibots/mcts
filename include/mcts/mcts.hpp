@@ -38,6 +38,7 @@ namespace mcts {
             // std::cout << "parent: " << node->parent()->action() << std::endl;
             // std::cout << "parent: " << node->parent()->parent()->visits() << std::endl;
             // state->action->state
+            // std::cout << node->value() / (double(node->visits()) + _epsilon) << " vs " << _c * std::sqrt(2.0 * std::log(node->parent()->parent()->visits()) / (double(node->visits()) + _epsilon)) << std::endl;
             return node->value() / (double(node->visits()) + _epsilon) + _c * std::sqrt(2.0 * std::log(node->parent()->parent()->visits()) / (double(node->visits()) + _epsilon));
         }
     };
@@ -87,6 +88,19 @@ namespace mcts {
             return to_add;
         }
 
+        node_ptr add_child(node_ptr to_add)
+        {
+            auto it = std::find_if(_children.begin(), _children.end(), [&](node_ptr const& p) { return *(p->state()) == *(to_add->state()); });
+            if (it == _children.end()) {
+                // std::cout << "not in children!" << std::endl;
+                to_add->parent() = this->shared_from_this();
+                _children.push_back(to_add);
+                return to_add;
+            }
+
+            return (*it);
+        }
+
         std::pair<double, node_ptr> value()
         {
             double v = -std::numeric_limits<double>::max();
@@ -100,6 +114,15 @@ namespace mcts {
             }
 
             return std::make_pair(v, best);
+        }
+
+        double avg_value()
+        {
+            double v = 0.0;
+            for (auto node : _children) {
+                v += ActionValue()(node);
+            }
+            return v / double(_children.size());
         }
 
     protected:
@@ -176,7 +199,7 @@ namespace mcts {
             node_ptr to_simulate = _tree_policy();
             // std::cout << "Node to simulate: " << to_simulate->_state->_x << " " << to_simulate->_state->_y << std::endl;
             double value = _simulate(vfun, to_simulate);
-            _back_prop(to_simulate, value);
+            _back_prop(vfun, to_simulate, value);
         }
 
         node_ptr best_child() const
@@ -186,16 +209,24 @@ namespace mcts {
             assert(_children.size() > 0);
 
             double v = -std::numeric_limits<double>::max();
-            node_ptr best = nullptr;
+            action_ptr best_action = nullptr;
 
             for (auto child : _children) {
-                std::pair<double, node_ptr> v_cur = child->value();
-                double d = std::get<0>(v_cur);
+                // std::pair<double, node_ptr> v_cur = child->value();
+                // double d = std::get<0>(v_cur);
+                // if (d > v) {
+                //     v = d;
+                //     best = std::get<1>(v_cur);
+                // }
+                double d = child->avg_value();
                 if (d > v) {
                     v = d;
-                    best = std::get<1>(v_cur);
+                    best_action = child;
                 }
             }
+
+            node_ptr best = std::make_shared<node_type>(_state->move(best_action->action()), _rollout_depth, _gamma);
+            best = best_action->add_child(best);
 
             return best;
         }
@@ -252,14 +283,14 @@ namespace mcts {
         double _simulate(ValueFunc vfun, node_ptr to_simulate)
         {
             // std::cout << "Simulating.." << std::endl;
-            double discount = _gamma;
+            double discount = 1.0;
             double reward = 0.0;
 
             state_ptr cur_state = to_simulate->_state;
 
             // Check if current state is terminal
-            if (cur_state->terminal())
-                return vfun.max_reward();
+            // if (cur_state->terminal())
+            //     return vfun.max_reward();
 
             for (size_t k = 0; k < _rollout_depth; ++k) {
                 // Choose action according to default policy
@@ -286,11 +317,16 @@ namespace mcts {
             return reward;
         }
 
-        void _back_prop(node_ptr simulated, double value)
+        template <typename ValueFunc>
+        void _back_prop(ValueFunc vfun, node_ptr simulated, double value)
         {
             node_ptr cur_node = simulated;
+            double v = value;
             while (cur_node != nullptr) {
-                cur_node->_value += value;
+                v = v * _gamma;
+                if (cur_node->_parent != nullptr)
+                    v += vfun(cur_node->_state, cur_node->_parent->action());
+                cur_node->_value += v;
                 cur_node->_visits++;
                 if (cur_node->_parent == nullptr)
                     break;
