@@ -27,7 +27,7 @@ namespace mcts {
         template <typename State>
         size_t operator()(const State& state, size_t actions_size)
         {
-            return static_cast<size_t>(std::rand() * actions_size / RAND_MAX);
+            return static_cast<size_t>(std::rand() * actions_size / (double)RAND_MAX);
         }
     };
 
@@ -129,7 +129,7 @@ namespace mcts {
                 double exp_value = cur_node->_value / (double(cur_node->_visits) + _epsilon);
 
                 // Add small random value to break ties
-                exp_value += std::rand() * _epsilon / RAND_MAX;
+                exp_value += std::rand() * _epsilon / (double)RAND_MAX;
 
                 if (exp_value > best) {
                     selected = cur_node->_action;
@@ -212,7 +212,7 @@ namespace mcts {
                 double value = ValueFunc()(_children[k]);
 
                 // Add small random value to break ties
-                value += std::rand() * _epsilon / RAND_MAX;
+                value += std::rand() * _epsilon / (double)RAND_MAX;
 
                 if (value > best) {
                     selected = k;
