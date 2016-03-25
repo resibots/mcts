@@ -44,6 +44,11 @@ def build(bld):
               target='mcts_state')
 
     bld.program(features = 'cxx',
+              source='src/mcts.cpp',
+              includes = './include',
+              target='mcts')
+
+    bld.program(features = 'cxx',
               source='src/value_iteration.cpp',
               includes = './include',
               target='value_iteration')
