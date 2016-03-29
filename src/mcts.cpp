@@ -2,9 +2,9 @@
 #include <ctime>
 #include <mcts/mcts.hpp>
 
-#define SIZE 7
+#define SIZE 10
 #define GOAL SIZE
-#define PROB 0.0
+#define PROB 0.01
 
 struct GridState {
     size_t _x, _y, _N;
@@ -25,6 +25,7 @@ struct GridState {
 
     bool valid(size_t action) const
     {
+        assert(_N == SIZE);
         int x_new = _x, y_new = _y;
         if (action == 0) // up
         {
@@ -55,18 +56,26 @@ struct GridState {
 
     size_t next_action()
     {
-        for (size_t i = 0; i < 4; i++) {
-            if (valid(i) && std::count(_used_actions.begin(), _used_actions.end(), i) == 0) {
-                _used_actions.push_back(i);
-                return i;
-            }
-        }
-        assert(false);
-        return 0;
+        // for (size_t i = 0; i < 4; i++) {
+        //     if (valid(i) && std::count(_used_actions.begin(), _used_actions.end(), i) == 0) {
+        //         _used_actions.push_back(i);
+        //         return i;
+        //     }
+        // }
+        size_t i;
+        do {
+            i = static_cast<size_t>(std::rand() * 4.0 / double(RAND_MAX));
+        } while (!valid(i) || std::count(_used_actions.begin(), _used_actions.end(), i) > 0);
+        _used_actions.push_back(i);
+        return i;
+        // assert(false);
+        // return 0;
     }
 
     size_t valid_actions() const
     {
+        if (terminal())
+            return 0;
         size_t _valid = 0;
         for (size_t i = 0; i < 4; i++) {
             if (valid(i))
@@ -86,7 +95,7 @@ struct GridState {
         int x_new = _x, y_new = _y;
 
         double r = std::rand() / (double)RAND_MAX;
-        if (r < PROB)
+        if ((r - PROB) < 1e-6)
             action = (action + 1) % 4;
 
         if (action == 0) // up
@@ -113,6 +122,8 @@ struct GridState {
             if (x_new < 0)
                 x_new++;
         }
+        // if (r < PROB)
+        //     return GridState(_x, _y, _N);
 
         return GridState(x_new, y_new, _N);
     }
@@ -123,6 +134,26 @@ struct GridState {
         do {
             act = static_cast<size_t>(std::rand() * 4.0 / (double)RAND_MAX);
         } while (!valid(act));
+
+        return act;
+    }
+
+    size_t best_action() const
+    {
+        size_t act = 0;
+        double v = std::numeric_limits<double>::max();
+        for (size_t i = 0; i < 4; i++) {
+            if (!valid(i))
+                continue;
+            GridState tmp = move(i);
+            double dx = tmp._x - GOAL + 1;
+            double dy = tmp._y - GOAL + 1;
+            double d = dx * dx + dy * dy;
+            if (d < v) {
+                act = i;
+                v = d;
+            }
+        }
 
         return act;
     }
@@ -147,14 +178,22 @@ struct GridWorld {
     {
         State tmp = state->move(action);
         if (tmp._x == (GOAL - 1) && tmp._y == (GOAL - 1))
-            return 1.0;
+            return max_reward();
 
-        return 0.0;
+        return -1.0;
     }
 
     double max_reward()
     {
-        return 1.0;
+        return 100.0;
+    }
+};
+
+template <typename State, typename Action>
+struct BestHeuristic {
+    Action operator()(const std::shared_ptr<State>& state)
+    {
+        return state->best_action();
     }
 };
 
@@ -169,13 +208,14 @@ int main()
     for (size_t i = 0; i < SIZE; i++) {
         for (size_t j = 0; j < SIZE; j++) {
             GridState init(i, j, SIZE);
-            auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, mcts::UniformRandomPolicy<GridState, size_t>, size_t>>(init);
+            auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, BestHeuristic<GridState, size_t>, size_t>>(init, 100);
             const int N_ITERATIONS = 10000;
             for (int k = 0; k < N_ITERATIONS; ++k) {
                 tree->iterate(world);
-                // std::cin.get();
             }
-            auto best = tree->best_child();
+            // tree->print();
+            // std::cout << "------------------------" << std::endl;
+            auto best = tree->best_child(false);
             if (best == nullptr)
                 std::cout << init._x << " " << init._y << ": Terminal!" << std::endl;
             else {
@@ -183,6 +223,7 @@ int main()
                     c++;
                 std::cout << init._x << " " << init._y << ": " << best->parent()->action() << std::endl;
             }
+            // std::cin.get();
         }
     }
     std::cout << "Errors: " << c << std::endl;

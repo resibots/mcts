@@ -27,7 +27,7 @@ namespace mcts {
     };
 
     struct UCTValue {
-        const double _c = 1.0 / std::sqrt(2.0);
+        const double _c = 1e-2; //1.0 / std::sqrt(2.0);
         const double _epsilon = 1e-6;
 
         template <typename Node>
@@ -82,7 +82,13 @@ namespace mcts {
         {
             // std::cout << "Expanding action" << std::endl;
             // std::cout << "Moved to " << _parent->state()->move(_action)._x << " " << _parent->state()->move(_action)._y << std::endl;
-            node_ptr to_add = std::make_shared<NodeType>(_parent->state()->move(_action), _parent->rollout_depth(), _parent->gamma());
+            auto st = _parent->state()->move(_action);
+            // std::cout << "Moved to " << st._x << " " << st._y << std::endl;
+            node_ptr to_add = std::make_shared<NodeType>(st, _parent->rollout_depth(), _parent->gamma());
+            // if (*(to_add->state()) == *(_parent->state())) {
+            //     _parent->visits()++;
+            //     return nullptr;
+            // }
             to_add->parent() = this->shared_from_this();
             _children.push_back(to_add);
             return to_add;
@@ -90,9 +96,21 @@ namespace mcts {
 
         node_ptr add_child(node_ptr to_add)
         {
+            // if (*(to_add->state()) == *(_parent->state())) {
+            //     if (_children.size() == 0) {
+            //         _parent->visits()++;
+            //         return nullptr;
+            //     }
+            //     return _children[std::rand() * _children.size() / double(RAND_MAX)];
+            // }
+
             auto it = std::find_if(_children.begin(), _children.end(), [&](node_ptr const& p) { return *(p->state()) == *(to_add->state()); });
             if (it == _children.end()) {
-                // std::cout << "not in children!" << std::endl;
+                // std::cout << "not in " << _parent->state()->_x << " " << _parent->state()->_y << " children!" << std::endl;
+                // std::cout << to_add->state()->_x << " " << to_add->state()->_y << std::endl;
+                // for (size_t i = 0; i < _children.size(); i++)
+                //     std::cout << _children[i]->state()->_x << " " << _children[i]->state()->_y << std::endl;
+                // std::cout << "---------------------------" << std::endl;
                 to_add->parent() = this->shared_from_this();
                 _children.push_back(to_add);
                 return to_add;
@@ -123,6 +141,20 @@ namespace mcts {
                 v += ActionValue()(node);
             }
             return v / double(_children.size());
+        }
+
+        node_ptr best_child()
+        {
+            double v = -std::numeric_limits<double>::max();
+            node_ptr best = nullptr;
+            for (auto node : _children) {
+                double d = ActionValue()(node);
+                if (d > v) {
+                    v = d;
+                    best = node;
+                }
+            }
+            return best;
         }
 
     protected:
@@ -177,6 +209,11 @@ namespace mcts {
             return _visits;
         }
 
+        size_t& visits()
+        {
+            return _visits;
+        }
+
         size_t rollout_depth() const
         {
             return _rollout_depth;
@@ -197,12 +234,24 @@ namespace mcts {
         {
             // std::cout << "Iterate!" << std::endl;
             node_ptr to_simulate = _tree_policy();
+            if (to_simulate == nullptr)
+                return;
+            if (to_simulate->_state->terminal()) {
+                _back_prop(vfun, to_simulate, vfun.max_reward());
+            }
+            if (to_simulate->_parent != nullptr && to_simulate->_visits == 0) {
+                double v = _simulate(vfun, to_simulate->_parent->parent());
+                _back_prop(vfun, to_simulate->_parent->parent(), v);
+            }
             // std::cout << "Node to simulate: " << to_simulate->_state->_x << " " << to_simulate->_state->_y << std::endl;
+            // if (to_simulate->_parent != nullptr && to_simulate->_parent->parent()->state()->terminal()) {
+            //     return;
+            // }
             double value = _simulate(vfun, to_simulate);
             _back_prop(vfun, to_simulate, value);
         }
 
-        node_ptr best_child() const
+        node_ptr best_child(bool simulate = true) const
         {
             if (_state->terminal())
                 return nullptr;
@@ -219,14 +268,22 @@ namespace mcts {
                 //     best = std::get<1>(v_cur);
                 // }
                 double d = child->avg_value();
+                if (!simulate)
+                    std::cout << child->action() << " -> " << d << std::endl;
                 if (d > v) {
                     v = d;
                     best_action = child;
                 }
             }
 
-            node_ptr best = std::make_shared<node_type>(_state->move(best_action->action()), _rollout_depth, _gamma);
-            best = best_action->add_child(best);
+            node_ptr best;
+            if (simulate) {
+                best = std::make_shared<node_type>(_state->move(best_action->action()), _rollout_depth, _gamma);
+                best = best_action->add_child(best);
+            }
+            else {
+                best = best_action->best_child();
+            }
 
             return best;
         }
@@ -234,6 +291,19 @@ namespace mcts {
         bool fully_expanded() const
         {
             return !_state->has_actions();
+        }
+
+        void print(size_t d = 0) const
+        {
+            std::cout << d << ": " << _state->_x << " " << _state->_y << " -> " << _value << ", " << _visits; // << std::endl;
+            if (_parent != nullptr)
+                std::cout << " act: " << _parent->action();
+            std::cout << std::endl;
+            for (size_t i = 0; i < _children.size(); i++) {
+                for (size_t k = 0; k < _children[i]->children().size(); k++) {
+                    _children[i]->children()[k]->print(d + 1);
+                }
+            }
         }
 
     protected:
@@ -247,7 +317,7 @@ namespace mcts {
         {
             // std::cout << "Tree policy" << std::endl;
             node_ptr cur_node = this->shared_from_this();
-            while (!cur_node->_state->terminal()) {
+            while (!cur_node->state()->terminal()) { // || cur_node->_children.size() != 0) {
                 // std::cout << cur_node->_state->_x << " " << cur_node->_state->_y << std::endl;
                 if (!cur_node->fully_expanded()) {
                     // std::cout << "Not expanded!" << std::endl;
@@ -257,6 +327,9 @@ namespace mcts {
                     // std::cout << "Select child!" << std::endl;
                     cur_node = cur_node->best_child();
                 }
+
+                // if (cur_node == nullptr)
+                //     return nullptr;
             }
 
             return cur_node;
@@ -289,8 +362,9 @@ namespace mcts {
             state_ptr cur_state = to_simulate->_state;
 
             // Check if current state is terminal
-            // if (cur_state->terminal())
+            // if (cur_state->terminal()) {
             //     return vfun.max_reward();
+            // }
 
             for (size_t k = 0; k < _rollout_depth; ++k) {
                 // Choose action according to default policy
@@ -323,14 +397,14 @@ namespace mcts {
             node_ptr cur_node = simulated;
             double v = value;
             while (cur_node != nullptr) {
-                v = v * _gamma;
-                if (cur_node->_parent != nullptr)
-                    v += vfun(cur_node->_state, cur_node->_parent->action());
                 cur_node->_value += v;
                 cur_node->_visits++;
                 if (cur_node->_parent == nullptr)
                     break;
                 cur_node = cur_node->_parent->parent(); // state->action->state
+                // v = v * _gamma;
+                // if (cur_node->_parent != nullptr)
+                //     v += vfun(cur_node->_state, cur_node->_parent->action());
             }
         }
     };
