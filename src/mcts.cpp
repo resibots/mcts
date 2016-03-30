@@ -4,7 +4,7 @@
 
 #define SIZE 10
 #define GOAL SIZE
-#define PROB 0.01
+#define PROB 0.1
 
 struct GridState {
     size_t _x, _y, _N;
@@ -90,12 +90,12 @@ struct GridState {
         return _used_actions.size() < valid_actions();
     }
 
-    GridState move(size_t action) const
+    GridState move(size_t action, bool prob = true) const
     {
         int x_new = _x, y_new = _y;
 
         double r = std::rand() / (double)RAND_MAX;
-        if ((r - PROB) < 1e-6)
+        if ((r - PROB) < 1e-6 && prob)
             action = (action + 1) % 4;
 
         if (action == 0) // up
@@ -145,7 +145,7 @@ struct GridState {
         for (size_t i = 0; i < 4; i++) {
             if (!valid(i))
                 continue;
-            GridState tmp = move(i);
+            GridState tmp = move(i, false);
             double dx = tmp._x - GOAL + 1;
             double dy = tmp._y - GOAL + 1;
             double d = dx * dx + dy * dy;
@@ -180,12 +180,12 @@ struct GridWorld {
         if (tmp._x == (GOAL - 1) && tmp._y == (GOAL - 1))
             return max_reward();
 
-        return -1.0;
+        return 0.0;
     }
 
     double max_reward()
     {
-        return 100.0;
+        return 1.0;
     }
 };
 
@@ -208,14 +208,15 @@ int main()
     for (size_t i = 0; i < SIZE; i++) {
         for (size_t j = 0; j < SIZE; j++) {
             GridState init(i, j, SIZE);
-            auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, BestHeuristic<GridState, size_t>, size_t>>(init, 100);
+            auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, BestHeuristic<GridState, size_t>, size_t>>(init, 20000);
             const int N_ITERATIONS = 10000;
             for (int k = 0; k < N_ITERATIONS; ++k) {
                 tree->iterate(world);
             }
             // tree->print();
             // std::cout << "------------------------" << std::endl;
-            auto best = tree->best_child(false);
+            auto tmp = tree->best_child(false);
+            auto best = std::get<0>(tmp);
             if (best == nullptr)
                 std::cout << init._x << " " << init._y << ": Terminal!" << std::endl;
             else {

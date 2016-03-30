@@ -39,7 +39,7 @@ namespace mcts {
             // std::cout << "parent: " << node->parent()->parent()->visits() << std::endl;
             // state->action->state
             // std::cout << node->value() / (double(node->visits()) + _epsilon) << " vs " << _c * std::sqrt(2.0 * std::log(node->parent()->parent()->visits()) / (double(node->visits()) + _epsilon)) << std::endl;
-            return node->value() / (double(node->visits()) + _epsilon) + _c * std::sqrt(2.0 * std::log(node->parent()->parent()->visits()) / (double(node->visits()) + _epsilon));
+            return node->value() / (double(node->visits()) + _epsilon); // + _c * std::sqrt(2.0 * std::log(node->parent()->parent()->visits()) / (double(node->visits()) + _epsilon));
         }
     };
 
@@ -233,28 +233,36 @@ namespace mcts {
         void iterate(ValueFunc vfun)
         {
             // std::cout << "Iterate!" << std::endl;
-            node_ptr to_simulate = _tree_policy();
+            node_ptr to_simulate = _tree_policy(vfun);
             if (to_simulate == nullptr)
                 return;
-            if (to_simulate->_state->terminal()) {
-                _back_prop(vfun, to_simulate, vfun.max_reward());
-            }
-            if (to_simulate->_parent != nullptr && to_simulate->_visits == 0) {
-                double v = _simulate(vfun, to_simulate->_parent->parent());
-                _back_prop(vfun, to_simulate->_parent->parent(), v);
-            }
+            // if (to_simulate->_state->terminal()) {
+            //     _back_prop(vfun, to_simulate, vfun.max_reward());
+            // }
+            // if (to_simulate->_parent != nullptr && to_simulate->_visits == 0) {
+            //     double v = _simulate(vfun, to_simulate->_parent->parent());
+            //     _back_prop(vfun, to_simulate->_parent->parent(), v);
+            // }
             // std::cout << "Node to simulate: " << to_simulate->_state->_x << " " << to_simulate->_state->_y << std::endl;
             // if (to_simulate->_parent != nullptr && to_simulate->_parent->parent()->state()->terminal()) {
             //     return;
             // }
             double value = _simulate(vfun, to_simulate);
-            _back_prop(vfun, to_simulate, value);
+
+            assert(_visited.size() == _rewards.size());
+
+            for (int i = _visited.size() - 1; i >= 0; i--) {
+                value = _rewards[i] + _gamma * value;
+                _visited[i]->_visits++;
+                _visited[i]->_value += value;
+            }
+            // _back_prop(vfun, to_simulate, value);
         }
 
-        node_ptr best_child(bool simulate = true) const
+        std::pair<node_ptr, action_ptr> best_child(bool simulate = true)
         {
             if (_state->terminal())
-                return nullptr;
+                return std::make_pair<node_ptr, action_ptr>(nullptr, nullptr);
             assert(_children.size() > 0);
 
             double v = -std::numeric_limits<double>::max();
@@ -285,7 +293,7 @@ namespace mcts {
                 best = best_action->best_child();
             }
 
-            return best;
+            return std::make_pair(best, best_action);
         }
 
         bool fully_expanded() const
@@ -312,20 +320,34 @@ namespace mcts {
         state_ptr _state;
         double _value, _gamma;
         size_t _visits, _rollout_depth;
+        // helper
+        std::vector<node_ptr> _visited;
+        std::vector<double> _rewards;
 
-        node_ptr _tree_policy()
+        template <typename ValueFunc>
+        node_ptr _tree_policy(ValueFunc vfun)
         {
+            _visited.clear();
+            _rewards.clear();
             // std::cout << "Tree policy" << std::endl;
             node_ptr cur_node = this->shared_from_this();
+            _visited.push_back(cur_node);
+            _rewards.push_back(0.0);
             while (!cur_node->state()->terminal()) { // || cur_node->_children.size() != 0) {
                 // std::cout << cur_node->_state->_x << " " << cur_node->_state->_y << std::endl;
                 if (!cur_node->fully_expanded()) {
                     // std::cout << "Not expanded!" << std::endl;
-                    return cur_node->_expand();
+                    auto tmp = cur_node->_expand();
+                    _visited.push_back(std::get<0>(tmp));
+                    _rewards.push_back(vfun(std::get<0>(tmp)->_state, std::get<1>(tmp)->action()));
+                    return std::get<0>(tmp);
                 }
                 else {
                     // std::cout << "Select child!" << std::endl;
-                    cur_node = cur_node->best_child();
+                    auto tmp = cur_node->best_child();
+                    cur_node = std::get<0>(tmp);
+                    _visited.push_back(cur_node);
+                    _rewards.push_back(vfun(cur_node->_state, std::get<1>(tmp)->action()));
                 }
 
                 // if (cur_node == nullptr)
@@ -335,7 +357,7 @@ namespace mcts {
             return cur_node;
         }
 
-        node_ptr _expand()
+        std::pair<node_ptr, action_ptr> _expand()
         {
             // std::cout << "Expanding" << std::endl;
             Action act = _state->next_action();
@@ -349,7 +371,8 @@ namespace mcts {
                 it--;
             }
 
-            return (*it)->expand();
+            auto tmp = (*it)->expand();
+            return std::make_pair(tmp, *it);
         }
 
         template <typename ValueFunc>
