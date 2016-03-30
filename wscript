@@ -49,6 +49,16 @@ def build(bld):
               target='mcts')
 
     bld.program(features = 'cxx',
+              source='src/uct.cpp',
+              includes = './include',
+              target='uct')
+
+    bld.program(features = 'cxx',
+              source='src/sailing.cpp',
+              includes = './include',
+              target='sailing')
+
+    bld.program(features = 'cxx',
               source='src/value_iteration.cpp',
               includes = './include',
               target='value_iteration')
