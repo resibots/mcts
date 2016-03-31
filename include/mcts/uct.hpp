@@ -41,6 +41,31 @@ namespace mcts {
         }
     };
 
+    struct SimpleSelectPolicy {
+        template <typename Node>
+        bool operator()(const std::shared_ptr<Node>& node)
+        {
+            return true;
+        }
+    };
+
+    struct SimpleOutcomeSelect {
+        template <typename Action>
+        auto operator()(const std::shared_ptr<Action>& action) -> std::shared_ptr<typename std::remove_reference<decltype(*(action->parent()))>::type>
+        {
+            auto st = action->parent()->state()->move(action->action());
+            auto to_add = std::make_shared<typename std::remove_reference<decltype(*(action->parent()))>::type>(st, action->parent()->rollout_depth(), action->parent()->gamma());
+            auto it = std::find_if(action->children().begin(), action->children().end(), [&](std::shared_ptr<typename std::remove_reference<decltype(*(action->parent()))>::type> const& p) { return *(p->state()) == *(to_add->state()); });
+            if (action->children().size() == 0 || it == action->children().end()) {
+                to_add->parent() = action;
+                action->children().push_back(to_add);
+                return to_add;
+            }
+
+            return (*it);
+        }
+    };
+
     struct UCTValue {
         const double _c = 10.0; //1.0 / std::sqrt(2.0);
         const double _epsilon = 1e-6;
@@ -71,19 +96,25 @@ namespace mcts {
         }
     };
 
-    template <typename NodeType, typename ActionValue, typename ActionType = size_t>
-    class MCTSAction : public std::enable_shared_from_this<MCTSAction<NodeType, ActionValue, ActionType>> {
+    template <typename NodeType, typename OutcomeSelection, typename ActionType = size_t>
+    class MCTSAction : public std::enable_shared_from_this<MCTSAction<NodeType, OutcomeSelection, ActionType>> {
     public:
+        using action_type = MCTSAction<NodeType, OutcomeSelection, ActionType>;
         using node_ptr = std::shared_ptr<NodeType>;
 
         MCTSAction(const ActionType& action, const node_ptr& parent, double value) : _parent(parent), _action(action), _value(value), _visits(0) {}
 
-        node_ptr parent() const
+        node_ptr parent()
         {
             return _parent;
         }
 
         std::vector<node_ptr> children() const
+        {
+            return _children;
+        }
+
+        std::vector<node_ptr>& children()
         {
             return _children;
         }
@@ -120,16 +151,7 @@ namespace mcts {
 
         node_ptr node()
         {
-            auto st = _parent->state()->move(_action);
-            node_ptr to_add = std::make_shared<NodeType>(st, _parent->rollout_depth(), _parent->gamma());
-            auto it = std::find_if(_children.begin(), _children.end(), [&](node_ptr const& p) { return *(p->state()) == *(to_add->state()); });
-            if (it == _children.end()) {
-                to_add->parent() = this->shared_from_this();
-                _children.push_back(to_add);
-                return to_add;
-            }
-
-            return (*it);
+            return OutcomeSelection()(this->shared_from_this());
         }
 
         void update_stats(double value)
@@ -146,11 +168,11 @@ namespace mcts {
         size_t _visits;
     };
 
-    template <typename State, typename StateInit, typename ValueInit, typename ActionValue, typename DefaultPolicy, typename Action>
-    class MCTSNode : public std::enable_shared_from_this<MCTSNode<State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action>> {
+    template <typename State, typename StateInit, typename ValueInit, typename ActionValue, typename DefaultPolicy, typename Action, typename SelectionPolicy, typename OutcomeSelection>
+    class MCTSNode : public std::enable_shared_from_this<MCTSNode<State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action, SelectionPolicy, OutcomeSelection>> {
     public:
-        using node_type = MCTSNode<State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action>;
-        using action_type = MCTSAction<node_type, ActionValue, Action>;
+        using node_type = MCTSNode<State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action, SelectionPolicy, OutcomeSelection>;
+        using action_type = MCTSAction<node_type, OutcomeSelection, Action>;
         using action_ptr = std::shared_ptr<action_type>;
         using node_ptr = std::shared_ptr<node_type>;
         using state_ptr = std::shared_ptr<State>;
@@ -158,13 +180,11 @@ namespace mcts {
         MCTSNode(size_t rollout_depth = 1000, double gamma = 0.9) : _gamma(gamma), _visits(0), _rollout_depth(rollout_depth)
         {
             _state = std::make_shared<State>(StateInit()());
-            _value = ValueInit()(_state);
         }
 
         MCTSNode(State state, size_t rollout_depth = 1000, double gamma = 0.9) : _gamma(gamma), _visits(0), _rollout_depth(rollout_depth)
         {
             _state = std::make_shared<State>(state);
-            _value = ValueInit()(_state);
         }
 
         action_ptr parent() const
@@ -207,11 +227,6 @@ namespace mcts {
             return _gamma;
         }
 
-        double value() const
-        {
-            return _value;
-        }
-
         template <typename ValueFunc>
         void iterate(ValueFunc vfun)
         {
@@ -223,35 +238,27 @@ namespace mcts {
             rewards.push_back(0.0);
             // std::cout << "Iterate!" << std::endl;
 
-            while (!cur_node->_state->terminal() && cur_node->fully_expanded()) {
+            while (!cur_node->_state->terminal() && (cur_node->_children.size() > 0 || cur_node->_parent == nullptr)) {
                 // std::cout << "(" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
-                action_ptr next_action = cur_node->_select_action();
+                action_ptr next_action = cur_node->_expand();
                 // std::cout << "Selected action: " << next_action->action() << std::endl;
                 rewards.push_back(vfun(cur_node->_state, next_action->action()));
                 cur_node = next_action->node();
                 visited.push_back(cur_node);
             }
 
-            // std::cout << "Expanding (" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
             double value;
             if (cur_node->_state->terminal()) {
                 value = 0.0;
             }
             else {
-                cur_node->_expand();
-                action_ptr next_action = cur_node->_select_action();
-                // std::cout << "Best action: " << next_action->action() << std::endl;
-                rewards.push_back(vfun(cur_node->_state, next_action->action()));
-                cur_node = next_action->node();
-                visited.push_back(cur_node);
-
                 // std::cout << "Simulating: (" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
                 value = cur_node->_simulate(vfun);
             }
 
             for (int i = visited.size() - 1; i >= 0; i--) {
                 value = rewards[i] + _gamma * value;
-                visited[i]->_update_stats(value);
+                visited[i]->_visits++;
                 if (visited[i]->_parent != nullptr)
                     visited[i]->_parent->update_stats(value);
             }
@@ -277,11 +284,6 @@ namespace mcts {
             return best_action;
         }
 
-        bool fully_expanded() const
-        {
-            return !_state->has_actions();
-        }
-
         // void print(size_t d = 0) const
         // {
         //     std::cout << d << ": " << _state->_x << " " << _state->_y << " -> " << _value << ", " << _visits; // << std::endl;
@@ -299,21 +301,22 @@ namespace mcts {
         action_ptr _parent;
         std::vector<action_ptr> _children;
         state_ptr _state;
-        double _value, _gamma;
+        double _gamma;
         size_t _visits, _rollout_depth;
 
         action_ptr _expand()
         {
-            Action act = _state->next_action();
-            action_ptr next_action = std::make_shared<action_type>(act, this->shared_from_this(), ValueInit()(_state));
-            auto it = std::find_if(_children.begin(), _children.end(), [&](action_ptr const& p) { return *p == *next_action; });
-            if (_children.size() == 0 || it == _children.end()) {
-                _children.push_back(next_action);
-                it = _children.end();
-                it--;
+            if (SelectionPolicy()(this->shared_from_this())) {
+                Action act = _state->next_action();
+                action_ptr next_action = std::make_shared<action_type>(act, this->shared_from_this(), ValueInit()(_state));
+                auto it = std::find_if(_children.begin(), _children.end(), [&](action_ptr const& p) { return *p == *next_action; });
+                if (_children.size() == 0 || it == _children.end()) {
+                    _children.push_back(next_action);
+                    return next_action;
+                }
             }
 
-            return (*it);
+            return _select_action();
         }
 
         action_ptr _select_action()
@@ -360,12 +363,6 @@ namespace mcts {
             }
 
             return reward;
-        }
-
-        void _update_stats(double value)
-        {
-            _value += value;
-            _visits++;
         }
     };
 }
