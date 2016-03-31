@@ -76,7 +76,7 @@ namespace mcts {
     public:
         using node_ptr = std::shared_ptr<NodeType>;
 
-        MCTSAction(const ActionType& action, const node_ptr& parent) : _parent(parent), _action(action), _visits(0) {}
+        MCTSAction(const ActionType& action, const node_ptr& parent, double value) : _parent(parent), _action(action), _value(value), _visits(0) {}
 
         node_ptr parent() const
         {
@@ -305,7 +305,7 @@ namespace mcts {
         action_ptr _expand()
         {
             Action act = _state->next_action();
-            action_ptr next_action = std::make_shared<action_type>(act, this->shared_from_this()); // i am not sure about this!?
+            action_ptr next_action = std::make_shared<action_type>(act, this->shared_from_this(), ValueInit()(_state));
             auto it = std::find_if(_children.begin(), _children.end(), [&](action_ptr const& p) { return *p == *next_action; });
             if (_children.size() == 0 || it == _children.end()) {
                 _children.push_back(next_action);
