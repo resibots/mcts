@@ -39,24 +39,9 @@ def configure(conf):
 
 def build(bld):
     bld.program(features = 'cxx',
-              source='src/mcts_state.cpp',
-              includes = './include',
-              target='mcts_state')
-
-    bld.program(features = 'cxx',
-              source='src/mcts.cpp',
-              includes = './include',
-              target='mcts')
-
-    bld.program(features = 'cxx',
               source='src/uct.cpp',
               includes = './include',
               target='uct')
-
-    bld.program(features = 'cxx',
-              source='src/sailing.cpp',
-              includes = './include',
-              target='sailing')
 
     bld.program(features = 'cxx',
               source='src/value_iteration.cpp',

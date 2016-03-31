@@ -48,8 +48,8 @@ namespace mcts {
         template <typename MCTSAction>
         double operator()(const std::shared_ptr<MCTSAction>& action)
         {
-            // return action->value() / (double(action->visits()) + _epsilon) + _c * std::sqrt(2.0 * std::log(action->parent()->visits()) / (double(action->visits()) + _epsilon));
-            return action->value() / (double(action->visits()) + _epsilon) + _c * std::sqrt(std::log(action->parent()->visits() + 1.0) / (double(action->visits()) + _epsilon));
+            // return action->value() / (double(action->visits()) + _epsilon) + _c * std::sqrt(2.0 * std::log(action->parent()->visits() + 1.0) / (double(action->visits()) + _epsilon));
+            return action->value() / (double(action->visits()) + _epsilon) + 2.0 * _c * std::sqrt(std::log(action->parent()->visits() + 1.0) / (double(action->visits()) + _epsilon));
         }
     };
 
