@@ -170,8 +170,8 @@ int main()
     ValueFunction world;
     SimpleState init(0.0, 0.0);
 
-    auto tree = std::make_shared<mcts::MCTSNode<SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy, mcts::ContOutcomeSelect>>(init, 2000);
-    const int n_iter = 5000;
+    auto tree = std::make_shared<mcts::MCTSNode<SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, mcts::UniformRandomPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy, mcts::ContOutcomeSelect>>(init, 2000);
+    const int n_iter = 10000;
     int k;
     for (k = 0; k < n_iter; ++k) {
         tree->iterate(world);
