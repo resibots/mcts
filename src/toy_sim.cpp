@@ -31,25 +31,11 @@ struct SimpleState {
         return (std::rand() * 2.0 * M_PI / double(RAND_MAX) - M_PI);
     }
 
-    double best_random_action() const
+    double best_action() const
     {
-        size_t N = 10;
-        double best = 0.0;
-        double v = std::numeric_limits<double>::max();
-        for (size_t i = 0; i < N; i++) {
-            double act = random_action();
-            SimpleState st = this->move(act, false);
-            double dx = st._x - global::goal_x;
-            double dy = st._y - global::goal_y;
-
-            double d = (dx * dx + dy * dy);
-            if (d < v) {
-                v = d;
-                best = act;
-            }
-        }
-
-        return best;
+        // not sure about this computation
+        return std::atan2(global::goal_y - _y, global::goal_x - _x);
+        // return (std::atan2(global::goal_y, global::goal_x) - std::atan2(_y, _x));
     }
 
     SimpleState move(double theta, bool prob = true) const
@@ -155,7 +141,7 @@ namespace mcts {
     struct BestHeuristicPolicy {
         Action operator()(const std::shared_ptr<State>& state)
         {
-            return state->best_random_action();
+            return state->best_action();
         }
     };
 }
