@@ -57,30 +57,7 @@ struct GridState {
 
     size_t next_action()
     {
-        size_t i;
-        do {
-            i = static_cast<size_t>(std::rand() * 4.0 / double(RAND_MAX));
-        } while (!valid(i) || std::count(_used_actions.begin(), _used_actions.end(), i) > 0);
-        _used_actions.push_back(i);
-        return i;
-    }
-
-    size_t valid_actions() const
-    {
-        if (terminal())
-            return 0;
-        size_t _valid = 0;
-        for (size_t i = 0; i < 4; i++) {
-            if (valid(i))
-                _valid++;
-        }
-
-        return _valid;
-    }
-
-    bool has_actions()
-    {
-        return _used_actions.size() < valid_actions();
+        return random_action();
     }
 
     GridState move(size_t action, bool prob = true) const
@@ -215,7 +192,7 @@ int main()
             for (size_t i = 0; i < s; i++) {
                 for (size_t j = 0; j < s; j++) {
                     GridState init(i, j, s, p);
-                    auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, BestHeuristicPolicy<GridState, size_t>, size_t>>(init, 10000);
+                    auto tree = std::make_shared<mcts::MCTSNode<GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, BestHeuristicPolicy<GridState, size_t>, size_t, mcts::SimpleSelectPolicy, mcts::SimpleOutcomeSelect>>(init, 10000);
                     const int N_ITERATIONS = 10000;
                     const int MIN_ITERATIONS = 1000;
                     int k;
@@ -233,6 +210,8 @@ int main()
                     // tree->print();
                     // std::cout << "------------------------" << std::endl;
                     auto best = tree->best_action();
+                    if (best == nullptr && !init.terminal())
+                        c++;
                     if (best != nullptr && best->action() != 0 && best->action() != 2)
                         c++;
                     // if (best == nullptr)
