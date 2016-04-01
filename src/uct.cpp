@@ -172,58 +172,6 @@ struct BestHeuristicPolicy {
     }
 };
 
-struct SPWSelectPolicy {
-    const double _a = 0.5;
-
-    template <typename Node>
-    bool operator()(const std::shared_ptr<Node>& node)
-    {
-        if (node->visits() == 0 || std::pow((double)node->visits(), _a) > node->children().size())
-            return true;
-        return false;
-    }
-};
-
-struct ContOutcomeSelect {
-    const double _b = 0.5;
-
-    template <typename Action>
-    auto operator()(const std::shared_ptr<Action>& action) -> std::shared_ptr<typename std::remove_reference<decltype(*(action->parent()))>::type>
-    {
-        using NodeType = typename std::remove_reference<decltype(*(action->parent()))>::type;
-
-        if (action->visits() == 0 || std::pow((double)action->visits(), _b) > action->children().size()) {
-            auto st = action->parent()->state()->move(action->action());
-            auto to_add = std::make_shared<NodeType>(st, action->parent()->rollout_depth(), action->parent()->gamma());
-            auto it = std::find_if(action->children().begin(), action->children().end(), [&](std::shared_ptr<NodeType> const& p) { return *(p->state()) == *(to_add->state()); });
-            if (action->children().size() == 0 || it == action->children().end()) {
-                to_add->parent() = action;
-                action->children().push_back(to_add);
-                return to_add;
-            }
-
-            return (*it);
-        }
-
-        // Choose child with probability: n(c)/Sum(n(c'))
-        size_t sum = 0;
-        for (size_t i = 0; i < action->children().size(); i++) {
-            sum += action->children()[i]->visits();
-        }
-        double r = std::rand() * sum / double(RAND_MAX);
-        double p = 0.0;
-        for (auto child : action->children()) {
-            p += child->visits();
-            if (r < p)
-                return child;
-        }
-
-        // we should never reach here
-        assert(false);
-        return nullptr;
-    }
-};
-
 int main()
 {
     std::srand(std::time(0));

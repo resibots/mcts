@@ -44,6 +44,11 @@ def build(bld):
               target='uct')
 
     bld.program(features = 'cxx',
+              source='src/toy_sim.cpp',
+              includes = './include',
+              target='toy_sim')
+
+    bld.program(features = 'cxx',
               source='src/value_iteration.cpp',
               includes = './include',
               target='value_iteration')
