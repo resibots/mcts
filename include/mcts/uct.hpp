@@ -53,9 +53,10 @@ namespace mcts {
         template <typename Action>
         auto operator()(const std::shared_ptr<Action>& action) -> std::shared_ptr<typename std::remove_reference<decltype(*(action->parent()))>::type>
         {
+            using NodeType = typename std::remove_reference<decltype(*(action->parent()))>::type;
             auto st = action->parent()->state()->move(action->action());
-            auto to_add = std::make_shared<typename std::remove_reference<decltype(*(action->parent()))>::type>(st, action->parent()->rollout_depth(), action->parent()->gamma());
-            auto it = std::find_if(action->children().begin(), action->children().end(), [&](std::shared_ptr<typename std::remove_reference<decltype(*(action->parent()))>::type> const& p) { return *(p->state()) == *(to_add->state()); });
+            auto to_add = std::make_shared<NodeType>(st, action->parent()->rollout_depth(), action->parent()->gamma());
+            auto it = std::find_if(action->children().begin(), action->children().end(), [&](std::shared_ptr<NodeType> const& p) { return *(p->state()) == *(to_add->state()); });
             if (action->children().size() == 0 || it == action->children().end()) {
                 to_add->parent() = action;
                 action->children().push_back(to_add);
