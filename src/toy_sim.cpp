@@ -2,6 +2,17 @@
 #include <ctime>
 #include <mcts/uct.hpp>
 
+template <typename T>
+inline T gaussian_rand(T m = 0.0, T v = 1.0)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::normal_distribution<T> gaussian(m, v);
+
+    return gaussian(gen);
+}
+
 namespace global {
     double goal_x, goal_y;
 }
@@ -23,7 +34,13 @@ struct SimpleState {
 
     double next_action() const
     {
-        return random_action();
+        // using domain knowledge - have to check literature
+        double th = gaussian_rand(best_action(), 0.1);
+        if (th > M_PI)
+            th -= 2 * M_PI;
+        if (th < -M_PI)
+            th += 2 * M_PI;
+        return th;
     }
 
     double random_action() const
@@ -164,7 +181,7 @@ int main()
     SimpleState init(0.0, 0.0);
 
     auto tree = std::make_shared<mcts::MCTSNode<SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy, mcts::ContOutcomeSelect>>(init, 2000);
-    const int n_iter = 20000;
+    const int n_iter = 10000;
     int k;
     for (k = 0; k < n_iter; ++k) {
         tree->iterate(world);
