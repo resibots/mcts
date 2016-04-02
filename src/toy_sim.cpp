@@ -33,9 +33,13 @@ struct SimpleState {
 
     double best_action() const
     {
-        // not sure about this computation
-        return std::atan2(global::goal_y - _y, global::goal_x - _x);
-        // return (std::atan2(global::goal_y, global::goal_x) - std::atan2(_y, _x));
+        // I should find the bug here - if any
+        double th = std::atan2(global::goal_y, global::goal_x) - std::atan2(_y, _x);
+        if (th > M_PI)
+            th -= 2 * M_PI;
+        if (th < -M_PI)
+            th += 2 * M_PI;
+        return th;
     }
 
     SimpleState move(double theta, bool prob = true) const
@@ -43,11 +47,14 @@ struct SimpleState {
         double r = 0.1;
         double th = theta;
         if (prob) {
-            th += (std::rand() * 0.2 / double(RAND_MAX)) - 0.1;
-            if (th > M_PI)
-                th -= 2 * M_PI;
-            if (th < -M_PI)
-                th += 2 * M_PI;
+            double p = std::rand() / double(RAND_MAX);
+            if (p < 0.2) {
+                th += 0.1;
+                if (th > M_PI)
+                    th -= 2 * M_PI;
+                if (th < -M_PI)
+                    th += 2 * M_PI;
+            }
         }
         double s = std::sin(th), c = std::cos(th);
         double x_new = r * c + _x, y_new = r * s + _y;
@@ -156,7 +163,7 @@ int main()
     ValueFunction world;
     SimpleState init(0.0, 0.0);
 
-    auto tree = std::make_shared<mcts::MCTSNode<SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, mcts::UniformRandomPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy, mcts::ContOutcomeSelect>>(init, 2000);
+    auto tree = std::make_shared<mcts::MCTSNode<SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy, mcts::ContOutcomeSelect>>(init, 2000);
     const int n_iter = 20000;
     int k;
     for (k = 0; k < n_iter; ++k) {
