@@ -49,7 +49,7 @@ struct SimpleState {
     double next_action() const
     {
         // using domain knowledge - have to check literature
-        double th = gaussian_rand(best_action(), 0.1);
+        double th = gaussian_rand(best_action(), 0.3);
         if (th > M_PI)
             th -= 2 * M_PI;
         if (th < -M_PI)
@@ -64,8 +64,7 @@ struct SimpleState {
 
     double best_action() const
     {
-        // I should find the bug here - if any
-        double th = std::atan2(global::goal_y, global::goal_x) - std::atan2(_y, _x);
+        double th = std::atan2(global::goal_y - _y, global::goal_x - _x);
         if (th > M_PI)
             th -= 2 * M_PI;
         if (th < -M_PI)
@@ -98,7 +97,7 @@ struct SimpleState {
         double dx = _x - global::goal_x;
         double dy = _y - global::goal_y;
 
-        if ((dx * dx + dy * dy) < _epsilon)
+        if ((dx * dx + dy * dy) < 0.01)
             return true;
         return false;
     }
@@ -136,8 +135,8 @@ int main()
 {
     std::srand(std::time(0));
 
-    global::goal_x = 0.2;
-    global::goal_y = 0.0;
+    global::goal_x = 2.0;
+    global::goal_y = 2.0;
 
     ValueFunction world;
     SimpleState init(0.0, 0.0);
