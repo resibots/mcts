@@ -39,16 +39,17 @@ def configure(conf):
 
 def build(bld):
     bld.program(features = 'cxx',
+              install_path = None,
               source='src/uct.cpp',
               includes = './include',
               target='uct')
 
     bld.program(features = 'cxx',
+              install_path = None,
               source='src/toy_sim.cpp',
               includes = './include',
               target='toy_sim')
 
-    bld.program(features = 'cxx',
-              source='src/value_iteration.cpp',
-              includes = './include',
-              target='value_iteration')
+    bld.install_files('${PREFIX}/include/mcts', 'include/mcts/uct.hpp')
+    bld.install_files('${PREFIX}/include/mcts', 'include/mcts/defaults.hpp')
+    bld.install_files('${PREFIX}/include/mcts', 'include/mcts/macros.hpp')
