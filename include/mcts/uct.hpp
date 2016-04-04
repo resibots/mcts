@@ -1,106 +1,20 @@
-#ifndef UCT_HPP
-#define UCT_HPP
+#ifndef MCTS_UCT_HPP
+#define MCTS_UCT_HPP
 
 #include <cassert>
 #include <algorithm>
 #include <memory>
 #include <vector>
 #include <utility>
-
-// class MCTSNode {
-//     double search(node_ptr node, size_t depth)
-//     {
-//         if (node->terminal())
-//             return 0;
-//         if (node->leaf())
-//             return _simulation(node);
-//         action_ptr next_action = node->_select_action(depth);
-//         std::pair<node_ptr, double> state_reward = node->_model_simulation(next_action);
-//         double q = std::get<1>(state_reward) + _gamma * search(std::get<0>(state_reward), depth + 1);
-//         node->_update(next_action, q, depth);
-//         return q;
-//     }
-// };
+#include <mcts/defaults.hpp>
+#include <mcts/macros.hpp>
 
 namespace mcts {
 
-    struct SimpleStateInit {
-        template <typename State>
-        std::shared_ptr<State> operator()()
-        {
-            // assumes the default constructor of State is the init state
-            return std::make_shared<State>();
-        }
-    };
-
-    struct SimpleValueInit {
-        template <typename State>
-        double operator()(const std::shared_ptr<State>& state)
-        {
-            return 0.0;
-        }
-    };
-
-    struct SimpleSelectPolicy {
-        template <typename Node>
-        bool operator()(const std::shared_ptr<Node>& node)
-        {
-            return true;
-        }
-    };
-
-    struct SimpleOutcomeSelect {
-        template <typename Action>
-        auto operator()(const std::shared_ptr<Action>& action) -> std::shared_ptr<typename std::remove_reference<decltype(*(action->parent()))>::type>
-        {
-            using NodeType = typename std::remove_reference<decltype(*(action->parent()))>::type;
-            auto st = action->parent()->state()->move(action->action());
-            auto to_add = std::make_shared<NodeType>(st, action->parent()->rollout_depth(), action->parent()->gamma());
-            auto it = std::find_if(action->children().begin(), action->children().end(), [&](std::shared_ptr<NodeType> const& p) { return *(p->state()) == *(to_add->state()); });
-            if (action->children().size() == 0 || it == action->children().end()) {
-                to_add->parent() = action;
-                action->children().push_back(to_add);
-                return to_add;
-            }
-
-            return (*it);
-        }
-    };
-
-    struct UCTValue {
-        const double _c = 10.0; //1.0 / std::sqrt(2.0);
-        const double _epsilon = 1e-6;
-
-        template <typename MCTSAction>
-        double operator()(const std::shared_ptr<MCTSAction>& action)
-        {
-            // return action->value() / (double(action->visits()) + _epsilon) + _c * std::sqrt(2.0 * std::log(action->parent()->visits() + 1.0) / (double(action->visits()) + _epsilon));
-            return action->value() / (double(action->visits()) + _epsilon) + 2.0 * _c * std::sqrt(std::log(action->parent()->visits() + 1.0) / (double(action->visits()) + _epsilon));
-        }
-    };
-
-    struct GreedyValue {
-        const double _epsilon = 1e-6;
-
-        template <typename MCTSAction>
-        double operator()(const std::shared_ptr<MCTSAction>& action)
-        {
-            return action->value() / (double(action->visits()) + _epsilon);
-        }
-    };
-
-    template <typename State, typename Action>
-    struct UniformRandomPolicy {
-        Action operator()(const std::shared_ptr<State>& state)
-        {
-            return state->random_action();
-        }
-    };
-
-    template <typename NodeType, typename OutcomeSelection, typename ActionType = size_t>
-    class MCTSAction : public std::enable_shared_from_this<MCTSAction<NodeType, OutcomeSelection, ActionType>> {
+    template <typename Params, typename NodeType, typename OutcomeSelection, typename ActionType = size_t>
+    class MCTSAction : public std::enable_shared_from_this<MCTSAction<Params, NodeType, OutcomeSelection, ActionType>> {
     public:
-        using action_type = MCTSAction<NodeType, OutcomeSelection, ActionType>;
+        using action_type = MCTSAction<Params, NodeType, OutcomeSelection, ActionType>;
         using node_ptr = std::shared_ptr<NodeType>;
 
         MCTSAction(const ActionType& action, const node_ptr& parent, double value) : _parent(parent), _action(action), _value(value), _visits(0) {}
@@ -169,11 +83,11 @@ namespace mcts {
         size_t _visits;
     };
 
-    template <typename State, typename StateInit, typename ValueInit, typename ActionValue, typename DefaultPolicy, typename Action, typename SelectionPolicy, typename OutcomeSelection>
-    class MCTSNode : public std::enable_shared_from_this<MCTSNode<State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action, SelectionPolicy, OutcomeSelection>> {
+    template <typename Params, typename State, typename StateInit, typename ValueInit, typename ActionValue, typename DefaultPolicy, typename Action, typename SelectionPolicy, typename OutcomeSelection>
+    class MCTSNode : public std::enable_shared_from_this<MCTSNode<Params, State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action, SelectionPolicy, OutcomeSelection>> {
     public:
-        using node_type = MCTSNode<State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action, SelectionPolicy, OutcomeSelection>;
-        using action_type = MCTSAction<node_type, OutcomeSelection, Action>;
+        using node_type = MCTSNode<Params, State, StateInit, ValueInit, ActionValue, DefaultPolicy, Action, SelectionPolicy, OutcomeSelection>;
+        using action_type = MCTSAction<Params, node_type, OutcomeSelection, Action>;
         using action_ptr = std::shared_ptr<action_type>;
         using node_ptr = std::shared_ptr<node_type>;
         using state_ptr = std::shared_ptr<State>;

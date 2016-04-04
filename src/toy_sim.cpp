@@ -13,6 +13,20 @@ inline T gaussian_rand(T m = 0.0, T v = 1.0)
     return gaussian(gen);
 }
 
+struct Params {
+    struct uct {
+        MCTS_PARAM(double, c, 10.0);
+    };
+
+    struct spw {
+        MCTS_PARAM(double, a, 0.5);
+    };
+
+    struct cont_outcome {
+        MCTS_PARAM(double, b, 0.5);
+    };
+};
+
 namespace global {
     double goal_x, goal_y;
 }
@@ -109,58 +123,6 @@ struct ValueFunction {
 };
 
 namespace mcts {
-    struct SPWSelectPolicy {
-        const double _a = 0.5;
-
-        template <typename Node>
-        bool operator()(const std::shared_ptr<Node>& node)
-        {
-            if (node->visits() == 0 || std::pow((double)node->visits(), _a) > node->children().size())
-                return true;
-            return false;
-        }
-    };
-
-    struct ContOutcomeSelect {
-        const double _b = 0.5;
-
-        template <typename Action>
-        auto operator()(const std::shared_ptr<Action>& action) -> std::shared_ptr<typename std::remove_reference<decltype(*(action->parent()))>::type>
-        {
-            using NodeType = typename std::remove_reference<decltype(*(action->parent()))>::type;
-
-            if (action->visits() == 0 || std::pow((double)action->visits(), _b) > action->children().size()) {
-                auto st = action->parent()->state()->move(action->action());
-                auto to_add = std::make_shared<NodeType>(st, action->parent()->rollout_depth(), action->parent()->gamma());
-                auto it = std::find_if(action->children().begin(), action->children().end(), [&](std::shared_ptr<NodeType> const& p) { return *(p->state()) == *(to_add->state()); });
-                if (action->children().size() == 0 || it == action->children().end()) {
-                    to_add->parent() = action;
-                    action->children().push_back(to_add);
-                    return to_add;
-                }
-
-                return (*it);
-            }
-
-            // Choose child with probability: n(c)/Sum(n(c'))
-            size_t sum = 0;
-            for (size_t i = 0; i < action->children().size(); i++) {
-                sum += action->children()[i]->visits();
-            }
-            size_t r = static_cast<size_t>(std::rand() * double(sum) / double(RAND_MAX));
-            size_t p = 0;
-            for (auto child : action->children()) {
-                p += child->visits();
-                if (r <= p)
-                    return child;
-            }
-
-            // we should never reach here
-            assert(false);
-            return nullptr;
-        }
-    };
-
     template <typename State, typename Action>
     struct BestHeuristicPolicy {
         Action operator()(const std::shared_ptr<State>& state)
@@ -180,7 +142,7 @@ int main()
     ValueFunction world;
     SimpleState init(0.0, 0.0);
 
-    auto tree = std::make_shared<mcts::MCTSNode<SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy, mcts::ContOutcomeSelect>>(init, 2000);
+    auto tree = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
     const int n_iter = 10000;
     int k;
     for (k = 0; k < n_iter; ++k) {
