@@ -229,6 +229,8 @@ namespace mcts {
                     _children.push_back(next_action);
                     return next_action;
                 }
+
+                return (*it);
             }
 
             return _select_action();
