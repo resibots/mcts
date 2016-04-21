@@ -8,16 +8,21 @@ srcdir = '.'
 blddir = 'build'
 
 from waflib.Build import BuildContext
+import tbb
 
 
 def options(opt):
     opt.load('compiler_cxx')
     opt.load('compiler_c')
+    opt.load('tbb')
 
 
 def configure(conf):
     conf.load('compiler_cxx')
     conf.load('compiler_c')
+    conf.load('tbb')
+
+    conf.check_tbb()
 
     if conf.env.CXX_NAME in ["icc", "icpc"]:
         common_flags = "-Wall -std=c++11"
@@ -39,12 +44,14 @@ def configure(conf):
 
 def build(bld):
     bld.program(features = 'cxx',
+              uselib = "TBB",
               install_path = None,
               source='src/uct.cpp',
               includes = './include',
               target='uct')
 
     bld.program(features = 'cxx',
+              uselib = "TBB",
               install_path = None,
               source='src/toy_sim.cpp',
               includes = './include',
@@ -53,3 +60,4 @@ def build(bld):
     bld.install_files('${PREFIX}/include/mcts', 'include/mcts/uct.hpp')
     bld.install_files('${PREFIX}/include/mcts', 'include/mcts/defaults.hpp')
     bld.install_files('${PREFIX}/include/mcts', 'include/mcts/macros.hpp')
+    bld.install_files('${PREFIX}/include/mcts', 'include/mcts/parallel.hpp')
