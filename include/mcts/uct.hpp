@@ -260,8 +260,8 @@ namespace mcts {
         template <typename ValueFunc>
         double _simulate(ValueFunc vfun)
         {
-            std::vector<double> rewards;
-            auto f = [&](size_t i) {
+            par::vector<double> rewards;
+            auto f = [&]() {
               // clang-format off
               double discount = 1.0;
               double reward = 0.0;
@@ -287,7 +287,7 @@ namespace mcts {
                 // clang-format on
             };
 
-            par::loop(0, Params::mcts_node::parallel_sims(), f);
+            par::replicate(Params::mcts_node::parallel_sims(), f);
             double median;
             size_t size = rewards.size();
 
