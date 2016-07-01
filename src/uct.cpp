@@ -2,12 +2,17 @@
 #include <ctime>
 #include <fstream>
 #include <mcts/uct.hpp>
+#include <chrono>
 
 size_t GOAL;
 
 struct Params {
     struct uct {
         MCTS_PARAM(double, c, 10.0);
+    };
+
+    struct mcts_node {
+        MCTS_PARAM(size_t, parallel_sims, 4);
     };
 };
 
@@ -181,6 +186,7 @@ struct BestHeuristicPolicy {
 int main()
 {
     std::srand(std::time(0));
+    mcts::par::init();
 
     GridWorld world;
 
@@ -194,9 +200,11 @@ int main()
 
             size_t c = 0;
             size_t avg = 0;
+            double avg_time = 0.0;
 
             for (size_t i = 0; i < s; i++) {
                 for (size_t j = 0; j < s; j++) {
+                    auto t1 = std::chrono::steady_clock::now();
                     GridState init(i, j, s, p);
                     auto tree = std::make_shared<mcts::MCTSNode<Params, GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue<Params>, BestHeuristicPolicy<GridState, size_t>, size_t, mcts::SimpleSelectPolicy, mcts::SimpleOutcomeSelect>>(init, 10000);
                     const int N_ITERATIONS = 10000;
@@ -212,6 +220,8 @@ int main()
                             }
                         }
                     }
+                    auto time_running = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count();
+                    avg_time += time_running / 1000.0;
                     avg += k;
                     // tree->print();
                     // std::cout << "------------------------" << std::endl;
@@ -231,7 +241,7 @@ int main()
                 }
             }
 
-            file << c << " " << double(avg) / double(s * s) << std::endl;
+            file << c << " " << double(avg) / double(s * s) << " " << avg_time / double(s * s) << std::endl;
             // std::cout << "Errors: " << c << std::endl;
         }
         file.close();
