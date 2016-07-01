@@ -25,6 +25,10 @@ struct Params {
     struct cont_outcome {
         MCTS_PARAM(double, b, 0.5);
     };
+
+    struct mcts_node {
+        MCTS_PARAM(size_t, parallel_sims, 4);
+    };
 };
 
 namespace global {
@@ -134,6 +138,7 @@ namespace mcts {
 int main()
 {
     std::srand(std::time(0));
+    mcts::par::init();
 
     global::goal_x = 2.0;
     global::goal_y = 2.0;

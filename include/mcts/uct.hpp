@@ -261,7 +261,6 @@ namespace mcts {
         double _simulate(ValueFunc vfun)
         {
             std::vector<double> rewards;
-            std::mutex g_mutex;
             auto f = [&](size_t i) {
               // clang-format off
               double discount = 1.0;
@@ -284,13 +283,11 @@ namespace mcts {
                       break;
                   discount *= _gamma;
               }
-              g_mutex.lock();
               rewards.push_back(reward);
-              g_mutex.unlock();
                 // clang-format on
             };
 
-            par::loop(0, 4, f);
+            par::loop(0, Params::mcts_node::parallel_sims(), f);
             double median;
             size_t size = rewards.size();
 
