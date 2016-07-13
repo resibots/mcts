@@ -155,14 +155,15 @@ namespace mcts {
             rewards.push_back(0.0);
             // std::cout << "Iterate!" << std::endl;
 
-            while (!cur_node->_state->terminal() && (cur_node->_children.size() > 0 || cur_node->_parent == nullptr)) {
+            do {
                 // std::cout << "(" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
                 action_ptr next_action = cur_node->_expand();
                 // std::cout << "Selected action: " << next_action->action() << std::endl;
                 rewards.push_back(vfun(cur_node->_state, next_action->action()));
                 cur_node = next_action->node();
+                // std::cout << "TO: (" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
                 visited.push_back(cur_node);
-            }
+            } while (!cur_node->_state->terminal() && cur_node->visits() > 0);
 
             double value;
             if (cur_node->_state->terminal()) {
@@ -179,6 +180,25 @@ namespace mcts {
                 if (visited[i]->_parent != nullptr)
                     visited[i]->_parent->update_stats(value);
             }
+        }
+
+        size_t max_depth(size_t parent_depth = 0)
+        {
+            if (this->_children.size() == 0) {
+                return parent_depth + 1;
+            }
+
+            size_t maxDepth = 0;
+            for (size_t k = 0; k < this->_children.size(); ++k) {
+                for (size_t j = 0; j < this->_children[k]->children().size(); j++) {
+                    size_t curDepth = this->_children[k]->children()[j]->max_depth(parent_depth + 1);
+                    if (maxDepth < curDepth) {
+                        maxDepth = curDepth;
+                    }
+                }
+            }
+
+            return maxDepth;
         }
 
         template <typename Value = GreedyValue>
