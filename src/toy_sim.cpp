@@ -150,7 +150,7 @@ int main()
 #ifdef SINGLE
     const int n_iter = 400000;
 #else
-    const int n_iter = 100000;
+    const int n_iter = 200000;
 #endif
     auto l1 = [&]() {
     for (int k = 0; k < n_iter; ++k) {
