@@ -27,7 +27,11 @@ struct Params {
     };
 
     struct mcts_node {
-        MCTS_PARAM(size_t, parallel_sims, 4);
+#ifdef SINGLE
+        MCTS_PARAM(size_t, parallel_roots, 1);
+#else
+        MCTS_PARAM(size_t, parallel_roots, 4);
+#endif
     };
 };
 
@@ -146,58 +150,21 @@ int main()
     ValueFunction world;
     SimpleState init(0.0, 0.0);
 
-    auto tree1 = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit<SimpleState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
+    auto tree = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit<SimpleState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
 #ifdef SINGLE
     const int n_iter = 400000;
 #else
     const int n_iter = 200000;
 #endif
-    auto l1 = [&]() {
-    for (int k = 0; k < n_iter; ++k) {
-        tree1->iterate(world);
-    }
-    };
-
-    auto tree2 = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit<SimpleState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
-    auto l2 = [&]() {
-    for (int k = 0; k < n_iter; ++k) {
-        tree2->iterate(world);
-    }
-    };
-
-    auto tree3 = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit<SimpleState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
-    auto l3 = [&]() {
-    for (int k = 0; k < n_iter; ++k) {
-        tree3->iterate(world);
-    }
-    };
-
-    auto tree4 = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit<SimpleState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
-    auto l4 = [&]() {
-    for (int k = 0; k < n_iter; ++k) {
-        tree4->iterate(world);
-    }
-    };
 
     auto t1 = std::chrono::steady_clock::now();
-#ifdef SINGLE
-    l1();
-#else
-    tbb::parallel_invoke(l1, l2, l3, l4);
-#endif
 
-#ifdef SINGLE
-    auto big_tree = tree1;
-#else
-    auto big_tree = tree1->merge_with(tree2);
-    big_tree = big_tree->merge_with(tree3);
-    big_tree = big_tree->merge_with(tree4);
-#endif
+    tree->compute(world, n_iter);
 
     auto time_running = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count();
     std::cout << "Time in sec: " << time_running / 1000.0 << std::endl;
 
-    auto best = big_tree->best_action();
+    auto best = tree->best_action();
     if (best == nullptr)
         std::cout << init._x << " " << init._y << ": Terminal!" << std::endl;
     else

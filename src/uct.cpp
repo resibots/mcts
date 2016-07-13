@@ -12,7 +12,7 @@ struct Params {
     };
 
     struct mcts_node {
-        MCTS_PARAM(size_t, parallel_sims, 4);
+        MCTS_PARAM(size_t, parallel_roots, 1);
     };
 };
 

@@ -145,6 +145,32 @@ namespace mcts {
         }
 
         template <typename ValueFunc>
+        void compute(ValueFunc vfun, size_t iterations)
+        {
+            if (Params::mcts_node::parallel_roots() > 1) {
+                par::vector<node_ptr> roots;
+                par::replicate(Params::mcts_node::parallel_roots(), [&]() {
+                  node_ptr to_ret = std::make_shared<node_type>(*this->_state, this->_rollout_depth, this->_gamma);
+                  for (size_t k = 0; k < iterations; ++k) {
+                      to_ret->iterate(vfun);
+                  }
+
+                  roots.push_back(to_ret);
+                });
+
+                node_ptr cur_node = this->shared_from_this();
+                for (size_t i = 0; i < roots.size(); i++) {
+                    cur_node->merge_inplace(roots[i]);
+                }
+            }
+            else {
+                for (size_t k = 0; k < iterations; ++k) {
+                    this->iterate(vfun);
+                }
+            }
+        }
+
+        template <typename ValueFunc>
         void iterate(ValueFunc vfun)
         {
             std::vector<node_ptr> visited;
@@ -248,6 +274,30 @@ namespace mcts {
             return to_ret;
         }
 
+        void merge_inplace(const node_ptr& other)
+        {
+            node_ptr to_ret = this->shared_from_this();
+
+            for (auto child : _children) {
+                auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
+                if (it == to_ret->_children.end())
+                    to_ret->_children.push_back(child);
+                else {
+                    (*it)->value() += child->value();
+                    (*it)->visits() += child->visits();
+                }
+            }
+            for (auto child : other->_children) {
+                auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
+                if (it == to_ret->_children.end())
+                    to_ret->_children.push_back(child);
+                else {
+                    (*it)->value() += child->value();
+                    (*it)->visits() += child->visits();
+                }
+            }
+        }
+
         // void print(size_t d = 0) const
         // {
         //     std::cout << d << ": " << _state->_x << " " << _state->_y << " -> " << _value << ", " << _visits; // << std::endl;
@@ -307,49 +357,28 @@ namespace mcts {
         template <typename ValueFunc>
         double _simulate(ValueFunc vfun)
         {
-            // par::vector<double> rewards;
-            // auto f = [&]() {
-            // clang-format off
-              double discount = 1.0;
-              double reward = 0.0;
+            double discount = 1.0;
+            double reward = 0.0;
 
-              state_ptr cur_state = _state;
+            state_ptr cur_state = _state;
 
-              for (size_t k = 0; k < _rollout_depth; ++k) {
-                  // Choose action according to default policy
-                  Action action = DefaultPolicy()(cur_state);
+            for (size_t k = 0; k < _rollout_depth; ++k) {
+                // Choose action according to default policy
+                Action action = DefaultPolicy()(cur_state);
 
-                  // Get value from (PO)MDP
-                  reward += discount * vfun(cur_state, action);
+                // Get value from (PO)MDP
+                reward += discount * vfun(cur_state, action);
 
-                  // Update state
-                  cur_state = std::make_shared<State>(cur_state->move(action));
+                // Update state
+                cur_state = std::make_shared<State>(cur_state->move(action));
 
-                  // Check if terminal state
-                  if (cur_state->terminal())
-                      break;
-                  discount *= _gamma;
-              }
+                // Check if terminal state
+                if (cur_state->terminal())
+                    break;
+                discount *= _gamma;
+            }
 
-              return reward;
-            //   rewards.push_back(reward);
-            //     // clang-format on
-            // };
-            //
-            // par::replicate(Params::mcts_node::parallel_sims(), f);
-            // double median;
-            // size_t size = rewards.size();
-            //
-            // std::sort(rewards.begin(), rewards.end());
-            //
-            // if (size % 2 == 0) {
-            //     median = (rewards[size / 2 - 1] + rewards[size / 2]) / 2;
-            // }
-            // else {
-            //     median = rewards[size / 2];
-            // }
-            //
-            // return median;
+            return reward;
         }
     };
 }
