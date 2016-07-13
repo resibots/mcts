@@ -15,7 +15,7 @@ inline T gaussian_rand(T m = 0.0, T v = 1.0)
 
 struct Params {
     struct uct {
-        MCTS_PARAM(double, c, 10.0);
+        MCTS_PARAM(double, c, 50.0);
     };
 
     struct spw {
@@ -23,11 +23,15 @@ struct Params {
     };
 
     struct cont_outcome {
-        MCTS_PARAM(double, b, 0.5);
+        MCTS_PARAM(double, b, 0.6);
     };
 
     struct mcts_node {
-        MCTS_PARAM(size_t, parallel_sims, 4);
+#ifdef SINGLE
+        MCTS_PARAM(size_t, parallel_roots, 1);
+#else
+        MCTS_PARAM(size_t, parallel_roots, 4);
+#endif
     };
 };
 
@@ -146,12 +150,19 @@ int main()
     ValueFunction world;
     SimpleState init(0.0, 0.0);
 
-    auto tree = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
-    const int n_iter = 10000;
-    int k;
-    for (k = 0; k < n_iter; ++k) {
-        tree->iterate(world);
-    }
+    auto tree = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit<SimpleState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
+#ifdef SINGLE
+    const int n_iter = 400000;
+#else
+    const int n_iter = 200000;
+#endif
+
+    auto t1 = std::chrono::steady_clock::now();
+
+    tree->compute(world, n_iter);
+
+    auto time_running = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t1).count();
+    std::cout << "Time in sec: " << time_running / 1000.0 << std::endl;
 
     auto best = tree->best_action();
     if (best == nullptr)

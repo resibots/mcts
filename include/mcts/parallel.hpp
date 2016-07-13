@@ -11,6 +11,7 @@
 #include <tbb/parallel_for_each.h>
 #include <tbb/parallel_sort.h>
 #include <tbb/parallel_reduce.h>
+#include <tbb/parallel_invoke.h>
 #include <tbb/blocked_range.h>
 #endif
 
