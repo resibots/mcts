@@ -249,27 +249,8 @@ namespace mcts {
 
         node_ptr merge_with(const node_ptr& other)
         {
-            node_ptr to_ret = std::make_shared<node_type>();
-            to_ret->_visits = _visits + other->_visits;
-
-            for (auto child : _children) {
-                auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
-                if (it == to_ret->_children.end())
-                    to_ret->_children.push_back(child);
-                else {
-                    (*it)->value() += child->value();
-                    (*it)->visits() += child->visits();
-                }
-            }
-            for (auto child : other->_children) {
-                auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
-                if (it == to_ret->_children.end())
-                    to_ret->_children.push_back(child);
-                else {
-                    (*it)->value() += child->value();
-                    (*it)->visits() += child->visits();
-                }
-            }
+            node_ptr to_ret = std::make_shared<node_type>(*this->_state, this->_rollout_depth, this->_gamma);
+            to_ret->merge_inplace(other);
 
             return to_ret;
         }
@@ -278,15 +259,6 @@ namespace mcts {
         {
             node_ptr to_ret = this->shared_from_this();
 
-            for (auto child : _children) {
-                auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
-                if (it == to_ret->_children.end())
-                    to_ret->_children.push_back(child);
-                else {
-                    (*it)->value() += child->value();
-                    (*it)->visits() += child->visits();
-                }
-            }
             for (auto child : other->_children) {
                 auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
                 if (it == to_ret->_children.end())

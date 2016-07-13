@@ -53,9 +53,41 @@ def build(bld):
     bld.program(features = 'cxx',
               uselib = "TBB",
               install_path = None,
+              source='src/benchmarks/trap.cpp',
+              includes = './include',
+              defines = ['SINGLE'],
+              target='src/benchmarks/trap')
+
+    bld.program(features = 'cxx',
+              uselib = "TBB",
+              install_path = None,
+              source='src/benchmarks/trap.cpp',
+              includes = './include',
+              target='src/benchmarks/trap_parallel')
+
+    bld.program(features = 'cxx',
+              uselib = "TBB",
+              install_path = None,
+              source='src/benchmarks/trap.cpp',
+              includes = './include',
+              defines = ['SIMPLE', 'SINGLE'],
+              target='src/benchmarks/trap_simple')
+
+    bld.program(features = 'cxx',
+              uselib = "TBB",
+              install_path = None,
+              source='src/benchmarks/trap.cpp',
+              includes = './include',
+              defines = ['SIMPLE'],
+              target='src/benchmarks/trap_simple_parallel')
+
+    bld.program(features = 'cxx',
+              uselib = "TBB",
+              install_path = None,
               source='src/toy_sim.cpp',
               includes = './include',
               target='toy_sim')
+
     bld.program(features = 'cxx',
               uselib = "TBB",
               install_path = None,
