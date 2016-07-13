@@ -206,7 +206,7 @@ int main()
                 for (size_t j = 0; j < s; j++) {
                     auto t1 = std::chrono::steady_clock::now();
                     GridState init(i, j, s, p);
-                    auto tree = std::make_shared<mcts::MCTSNode<Params, GridState, mcts::SimpleStateInit, mcts::SimpleValueInit, mcts::UCTValue<Params>, BestHeuristicPolicy<GridState, size_t>, size_t, mcts::SimpleSelectPolicy, mcts::SimpleOutcomeSelect>>(init, 10000);
+                    auto tree = std::make_shared<mcts::MCTSNode<Params, GridState, mcts::SimpleStateInit<GridState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, BestHeuristicPolicy<GridState, size_t>, size_t, mcts::SimpleSelectPolicy, mcts::SimpleOutcomeSelect>>(init, 10000);
                     const int N_ITERATIONS = 10000;
                     const int MIN_ITERATIONS = 1000;
                     int k;

@@ -96,7 +96,7 @@ namespace mcts {
 
         MCTSNode(size_t rollout_depth = 1000, double gamma = 0.9) : _gamma(gamma), _visits(0), _rollout_depth(rollout_depth)
         {
-            _state = std::make_shared<State>(StateInit()());
+            _state = StateInit()();
         }
 
         MCTSNode(State state, size_t rollout_depth = 1000, double gamma = 0.9) : _gamma(gamma), _visits(0), _rollout_depth(rollout_depth)
@@ -221,6 +221,33 @@ namespace mcts {
             return best_action;
         }
 
+        node_ptr merge_with(const node_ptr& other)
+        {
+            node_ptr to_ret = std::make_shared<node_type>();
+            to_ret->_visits = _visits + other->_visits;
+
+            for (auto child : _children) {
+                auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
+                if (it == to_ret->_children.end())
+                    to_ret->_children.push_back(child);
+                else {
+                    (*it)->value() += child->value();
+                    (*it)->visits() += child->visits();
+                }
+            }
+            for (auto child : other->_children) {
+                auto it = std::find_if(to_ret->_children.begin(), to_ret->_children.end(), [&](action_ptr const& p) { return *p == *child; });
+                if (it == to_ret->_children.end())
+                    to_ret->_children.push_back(child);
+                else {
+                    (*it)->value() += child->value();
+                    (*it)->visits() += child->visits();
+                }
+            }
+
+            return to_ret;
+        }
+
         // void print(size_t d = 0) const
         // {
         //     std::cout << d << ": " << _state->_x << " " << _state->_y << " -> " << _value << ", " << _visits; // << std::endl;
@@ -280,9 +307,9 @@ namespace mcts {
         template <typename ValueFunc>
         double _simulate(ValueFunc vfun)
         {
-            par::vector<double> rewards;
-            auto f = [&]() {
-              // clang-format off
+            // par::vector<double> rewards;
+            // auto f = [&]() {
+            // clang-format off
               double discount = 1.0;
               double reward = 0.0;
 
@@ -303,24 +330,26 @@ namespace mcts {
                       break;
                   discount *= _gamma;
               }
-              rewards.push_back(reward);
-                // clang-format on
-            };
 
-            par::replicate(Params::mcts_node::parallel_sims(), f);
-            double median;
-            size_t size = rewards.size();
-
-            std::sort(rewards.begin(), rewards.end());
-
-            if (size % 2 == 0) {
-                median = (rewards[size / 2 - 1] + rewards[size / 2]) / 2;
-            }
-            else {
-                median = rewards[size / 2];
-            }
-
-            return median;
+              return reward;
+            //   rewards.push_back(reward);
+            //     // clang-format on
+            // };
+            //
+            // par::replicate(Params::mcts_node::parallel_sims(), f);
+            // double median;
+            // size_t size = rewards.size();
+            //
+            // std::sort(rewards.begin(), rewards.end());
+            //
+            // if (size % 2 == 0) {
+            //     median = (rewards[size / 2 - 1] + rewards[size / 2]) / 2;
+            // }
+            // else {
+            //     median = rewards[size / 2];
+            // }
+            //
+            // return median;
         }
     };
 }

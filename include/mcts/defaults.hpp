@@ -3,8 +3,8 @@
 
 namespace mcts {
 
+    template <typename State>
     struct SimpleStateInit {
-        template <typename State>
         std::shared_ptr<State> operator()()
         {
             // assumes the default constructor of State is the init state

@@ -56,6 +56,13 @@ def build(bld):
               source='src/toy_sim.cpp',
               includes = './include',
               target='toy_sim')
+    bld.program(features = 'cxx',
+              uselib = "TBB",
+              install_path = None,
+              source='src/toy_sim.cpp',
+              includes = './include',
+              defines = 'SINGLE',
+              target='toy_sim_single')
 
     bld.install_files('${PREFIX}/include/mcts', 'include/mcts/uct.hpp')
     bld.install_files('${PREFIX}/include/mcts', 'include/mcts/defaults.hpp')
