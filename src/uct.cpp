@@ -155,10 +155,9 @@ struct GridState {
 
 struct GridWorld {
     template <typename State>
-    double operator()(std::shared_ptr<State> state, size_t action)
+    double operator()(std::shared_ptr<State> from_state, size_t action, std::shared_ptr<State> to_state)
     {
-        State tmp = state->move(action);
-        if (tmp._x == (GOAL - 1) && tmp._y == (GOAL - 1))
+        if (to_state->_x == (GOAL - 1) && to_state->_y == (GOAL - 1))
             return max_reward();
 
         return min_reward();

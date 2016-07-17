@@ -78,16 +78,15 @@ struct SimpleState {
     }
 };
 
-struct ValueFunction {
+struct RewardFunction {
     template <typename State>
-    double operator()(std::shared_ptr<State> state, double action)
+    double operator()(std::shared_ptr<State> from_state, double action, std::shared_ptr<State> to_state)
     {
-        State tmp = state->move(action);
-        if (tmp._x < global::l)
+        if (to_state->_x < global::l)
             return global::a;
-        else if (tmp._x < (global::l + global::w))
+        else if (to_state->_x < (global::l + global::w))
             return 0.0;
-        else if (tmp._x > (global::l + global::w))
+        else if (to_state->_x > (global::l + global::w))
             return global::h;
         assert(false);
         return 0.0;
@@ -99,7 +98,7 @@ int main()
     std::srand(std::time(0));
     mcts::par::init();
 
-    ValueFunction world;
+    RewardFunction world;
     SimpleState init;
 
 #ifdef SIMPLE

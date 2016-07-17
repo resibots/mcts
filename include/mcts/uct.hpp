@@ -144,15 +144,15 @@ namespace mcts {
             return _gamma;
         }
 
-        template <typename ValueFunc>
-        void compute(ValueFunc vfun, size_t iterations)
+        template <typename RewardFunc>
+        void compute(RewardFunc rfun, size_t iterations)
         {
             if (Params::mcts_node::parallel_roots() > 1) {
                 par::vector<node_ptr> roots;
                 par::replicate(Params::mcts_node::parallel_roots(), [&]() {
                   node_ptr to_ret = std::make_shared<node_type>(*this->_state, this->_rollout_depth, this->_gamma);
                   for (size_t k = 0; k < iterations; ++k) {
-                      to_ret->iterate(vfun);
+                      to_ret->iterate(rfun);
                   }
 
                   roots.push_back(to_ret);
@@ -165,13 +165,13 @@ namespace mcts {
             }
             else {
                 for (size_t k = 0; k < iterations; ++k) {
-                    this->iterate(vfun);
+                    this->iterate(rfun);
                 }
             }
         }
 
-        template <typename ValueFunc>
-        void iterate(ValueFunc vfun)
+        template <typename RewardFunc>
+        void iterate(RewardFunc rfun)
         {
             std::vector<node_ptr> visited;
             std::vector<double> rewards;
@@ -182,11 +182,12 @@ namespace mcts {
             // std::cout << "Iterate!" << std::endl;
 
             do {
+                node_ptr prev_node = cur_node;
                 // std::cout << "(" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
                 action_ptr next_action = cur_node->_expand();
                 // std::cout << "Selected action: " << next_action->action() << std::endl;
-                rewards.push_back(vfun(cur_node->_state, next_action->action()));
                 cur_node = next_action->node();
+                rewards.push_back(rfun(prev_node->_state, next_action->action(), cur_node->_state));
                 // std::cout << "TO: (" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
                 visited.push_back(cur_node);
             } while (!cur_node->_state->terminal() && cur_node->visits() > 0);
@@ -197,7 +198,7 @@ namespace mcts {
             }
             else {
                 // std::cout << "Simulating: (" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
-                value = cur_node->_simulate(vfun);
+                value = cur_node->_simulate(rfun);
             }
 
             for (int i = visited.size() - 1; i >= 0; i--) {
@@ -326,8 +327,8 @@ namespace mcts {
             return best_action;
         }
 
-        template <typename ValueFunc>
-        double _simulate(ValueFunc vfun)
+        template <typename RewardFunc>
+        double _simulate(RewardFunc rfun)
         {
             double discount = 1.0;
             double reward = 0.0;
@@ -337,12 +338,13 @@ namespace mcts {
             for (size_t k = 0; k < _rollout_depth; ++k) {
                 // Choose action according to default policy
                 Action action = DefaultPolicy()(cur_state);
-
-                // Get value from (PO)MDP
-                reward += discount * vfun(cur_state, action);
+                state_ptr prev_state = cur_state;
 
                 // Update state
                 cur_state = std::make_shared<State>(cur_state->move(action));
+
+                // Get value from (PO)MDP
+                reward += discount * rfun(prev_state, action, cur_state);
 
                 // Check if terminal state
                 if (cur_state->terminal())

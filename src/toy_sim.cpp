@@ -118,12 +118,11 @@ struct SimpleState {
     }
 };
 
-struct ValueFunction {
+struct RewardFunction {
     template <typename State>
-    double operator()(std::shared_ptr<State> state, double action)
+    double operator()(std::shared_ptr<State> from_state, double action, std::shared_ptr<State> to_state)
     {
-        State tmp = state->move(action);
-        if (tmp.terminal())
+        if (to_state->terminal())
             return 10.0;
         return -1.0;
     }
@@ -147,7 +146,7 @@ int main()
     global::goal_x = 2.0;
     global::goal_y = 2.0;
 
-    ValueFunction world;
+    RewardFunction world;
     SimpleState init(0.0, 0.0);
 
     auto tree = std::make_shared<mcts::MCTSNode<Params, SimpleState, mcts::SimpleStateInit<SimpleState>, mcts::SimpleValueInit, mcts::UCTValue<Params>, mcts::BestHeuristicPolicy<SimpleState, double>, double, mcts::SPWSelectPolicy<Params>, mcts::ContinuousOutcomeSelect<Params>>>(init, 2000);
