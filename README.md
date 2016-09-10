@@ -1,7 +1,7 @@
 Monte Carlo Tree Search
 ========================
 
-A lightweight and generic C++11/14 implementation for Monte Carlo Tree Search algorithm.
+A lightweight and generic C++14 implementation for Monte Carlo Tree Search algorithm.
 
 Authors
 ------
