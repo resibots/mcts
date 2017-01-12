@@ -1,6 +1,7 @@
 #ifndef MCTS_UCT_HPP
 #define MCTS_UCT_HPP
 
+#include <cmath>
 #include <cassert>
 #include <algorithm>
 #include <memory>
