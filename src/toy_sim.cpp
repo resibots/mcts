@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ctime>
+#include <random>
 #include <mcts/uct.hpp>
 
 template <typename T>
