@@ -1,5 +1,7 @@
-#include <iostream>
 #include <ctime>
+#include <iostream>
+#include <random>
+
 #include <mcts/uct.hpp>
 
 template <typename T>
@@ -136,7 +138,7 @@ namespace mcts {
             return state->best_action();
         }
     };
-}
+} // namespace mcts
 
 int main()
 {

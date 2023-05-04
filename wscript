@@ -25,21 +25,18 @@ def configure(conf):
     conf.check_tbb()
 
     if conf.env.CXX_NAME in ["icc", "icpc"]:
-        common_flags = "-Wall -std=c++11"
+        common_flags = "-Wall -std=c++14"
         opt_flags = " -O3 -xHost  -march=native -mtune=native -unroll -fma -g"
     elif conf.env.CXX_NAME in ["clang"]:
-        common_flags = "-Wall -std=c++11"
+        common_flags = "-Wall -std=c++14"
         opt_flags = " -O3 -march=native -g"
     else:
-        if int(conf.env['CC_VERSION'][0]+conf.env['CC_VERSION'][1]) < 47:
-            common_flags = "-Wall -std=c++0x"
-        else:
-            common_flags = "-Wall -std=c++11"
+        common_flags = "-Wall -std=c++14"
         opt_flags = " -O3 -march=native -g"
 
     all_flags = common_flags + opt_flags
     conf.env['CXXFLAGS'] = conf.env['CXXFLAGS'] + all_flags.split(' ')
-    print conf.env['CXXFLAGS']
+    print(conf.env['CXXFLAGS'])
 
 
 def build(bld):

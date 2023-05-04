@@ -1,12 +1,13 @@
 #ifndef MCTS_UCT_HPP
 #define MCTS_UCT_HPP
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <memory>
-#include <vector>
-#include <utility>
 #include <mutex>
+#include <utility>
+#include <vector>
+
 #include <mcts/defaults.hpp>
 #include <mcts/macros.hpp>
 #include <mcts/parallel.hpp>
@@ -150,12 +151,12 @@ namespace mcts {
             if (Params::mcts_node::parallel_roots() > 1) {
                 par::vector<node_ptr> roots;
                 par::replicate(Params::mcts_node::parallel_roots(), [&]() {
-                  node_ptr to_ret = std::make_shared<node_type>(*this->_state, this->_rollout_depth, this->_gamma);
-                  for (size_t k = 0; k < iterations; ++k) {
-                      to_ret->iterate(rfun);
-                  }
+                    node_ptr to_ret = std::make_shared<node_type>(*this->_state, this->_rollout_depth, this->_gamma);
+                    for (size_t k = 0; k < iterations; ++k) {
+                        to_ret->iterate(rfun);
+                    }
 
-                  roots.push_back(to_ret);
+                    roots.push_back(to_ret);
                 });
 
                 node_ptr cur_node = this->shared_from_this();
@@ -355,6 +356,6 @@ namespace mcts {
             return reward;
         }
     };
-}
+} // namespace mcts
 
 #endif

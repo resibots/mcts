@@ -1,18 +1,20 @@
 #ifndef MCTS_PARALLEL_HPP
 #define MCTS_PARALLEL_HPP
 
-#include <vector>
 #include <algorithm>
+#include <vector>
 
 #ifdef USE_TBB
+#include <tbb/blocked_range.h>
 #include <tbb/concurrent_vector.h>
-#include <tbb/task_scheduler_init.h>
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_for_each.h>
-#include <tbb/parallel_sort.h>
-#include <tbb/parallel_reduce.h>
 #include <tbb/parallel_invoke.h>
-#include <tbb/blocked_range.h>
+#include <tbb/parallel_reduce.h>
+#include <tbb/parallel_sort.h>
+#ifndef USE_TBB_ONEAPI
+#include <tbb/task_scheduler_init.h>
+#endif
 #endif
 
 namespace mcts {
@@ -42,7 +44,7 @@ namespace mcts {
 
 #endif
 
-#ifdef USE_TBB
+#if (defined USE_TBB) && !(defined USE_TBB_ONEAPI)
         inline void init()
         {
             static tbb::task_scheduler_init init;
@@ -62,7 +64,7 @@ namespace mcts {
         {
 #ifdef USE_TBB
             tbb::parallel_for(size_t(begin), end, size_t(1), [&](size_t i) {
-                  // clang-format off
+                // clang-format off
                 f(i);
                 // clang-format on
             });
@@ -92,7 +94,7 @@ namespace mcts {
         {
 #ifdef USE_TBB
             auto body = [&](const tbb::blocked_range<size_t>& r, T current_max) -> T {
-    // clang-format off
+                // clang-format off
             for (size_t i = r.begin(); i != r.end(); ++i)
             {
                 T v = f(i);
@@ -103,7 +105,7 @@ namespace mcts {
                 // clang-format on
             };
             auto joint = [&](const T& p1, const T& p2) -> T {
-    // clang-format off
+                // clang-format off
             if (comp(p1, p2))
                 return p1;
             return p2;
@@ -140,7 +142,7 @@ namespace mcts {
         {
 #ifdef USE_TBB
             tbb::parallel_for(size_t(0), nb, size_t(1), [&](size_t i) {
-                    // clang-format off
+                // clang-format off
                 f();
                 // clang-format on
             });
@@ -149,7 +151,7 @@ namespace mcts {
                 f();
 #endif
         }
-    }
-}
+    } // namespace par
+} // namespace mcts
 
 #endif

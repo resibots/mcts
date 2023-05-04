@@ -1,6 +1,8 @@
 #ifndef MCTS_DEFAULTS_HPP
 #define MCTS_DEFAULTS_HPP
 
+#include <cmath>
+
 namespace mcts {
 
     template <typename State>
@@ -130,6 +132,6 @@ namespace mcts {
             return nullptr;
         }
     };
-}
+} // namespace mcts
 
 #endif
