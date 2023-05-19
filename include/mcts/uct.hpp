@@ -186,6 +186,8 @@ namespace mcts {
                 node_ptr prev_node = cur_node;
                 // std::cout << "(" << cur_node->_state->_x << ", " << cur_node->_state->_y << ")" << std::endl;
                 action_ptr next_action = cur_node->_expand();
+                if (!next_action)
+                    break;
                 // std::cout << "Selected action: " << next_action->action() << std::endl;
                 cur_node = next_action->node();
                 rewards.push_back(rfun(prev_node->_state, next_action->action(), cur_node->_state));
